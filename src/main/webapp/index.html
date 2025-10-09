@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payara Dev Console</title>
+        <style>
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                margin: 0;
+                background: #f9f9fb;
+                color: #333;
+                display: flex;
+                height: 100vh;
+            }
+            h1 {
+                color: #222;
+                margin-bottom: 20px;
+            }
+            #searchInput {
+                margin-bottom: 15px;
+                padding: 12px;
+                width: 95%;
+                font-size: 16px;
+                border: 1px solid #ccc;
+                border-radius: 6px;
+                box-shadow: inset 1px 1px 3px #ddd;
+            }
+            #sidePane {
+                width: 220px;
+                background-color: #fff;
+                border-right: 2px solid rgba(0, 44, 62);
+                display: flex;
+                flex-direction: column;
+                padding: 10px 10px 20px 10px;
+                overflow-y: auto;
+                min-width: fit-content;
+            }
+            #sidePane h2 {
+                margin-bottom: 15px;
+                font-size: 18px;
+                font-weight: bold;
+                color: rgba(0, 44, 62);
+            }
+            .sideButton {
+                background-color: transparent;
+                border: none;
+                cursor: pointer;
+                padding: 12px 10px;
+                font-size: 14px;
+                border-radius: 6px;
+                color: rgba(0, 44, 62);
+                font-weight: 600;
+                margin-bottom: 8px;
+                text-align: left;
+                position: relative;
+                transition: background-color 0.2s ease, color 0.2s ease;
+                user-select: none;
+                outline: none;
+            }
+            .sideButton:hover, .sideButton:focus {
+                background-color: #e6f0ff;
+                color: #004085;
+            }
+            .sideButton.active {
+                background-color: rgba(0, 44, 62);
+                color: white;
+                box-shadow: 0 0 8px rgba(0,123,255,0.8);
+                cursor: default;
+            }
+            .count-badge {
+                background: rgba(240, 152, 27);
+                color: #fff;
+                border-radius: 12px;
+                padding: 2px 6px;
+                font-size: 12px;
+                font-weight: 700;
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                right: 10px;
+                user-select: none;
+            }
+            #contentArea {
+                flex-grow: 1;
+                padding: 20px 30px;
+                overflow-y: auto;
+                background: #fff;
+                display: flex;
+                flex-direction: column;
+            }
+            .tabcontent {
+                display: none;
+                border-radius: 6px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+                flex-grow: 1;
+                overflow: auto;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 5px;
+            }
+            th, td {
+                text-align: left;
+                padding: 10px 12px;
+                border-bottom: 1px solid #eee;
+                vertical-align: top;
+                font-size: 14px;
+            }
+            th {
+                background-color: #f8faff;
+                position: sticky;
+                top: 0;
+                cursor: pointer;
+                user-select: none;
+                transition: background-color 0.2s ease;
+                z-index: 1;
+            }
+            th.sort-asc::after {
+                content: " 25B2";
+                color: rgba(0, 44, 62);
+            }
+            th.sort-desc::after {
+                content: " 25BC";
+                color: rgba(0, 44, 62);
+            }
+            tr:hover {
+                background-color: #f0f8ff;
+            }
+            .highlight {
+                background-color: #ffff99;
+                font-weight: 700;
+            }
+            .action-buttons {
+                margin: 10px 0 10px 0;
+                display: flex;
+                justify-content: flex-end;
+                gap: 8px;
+                flex-wrap: wrap;
+            }
+            button.action-btn {
+                background-color: rgba(0, 44, 62);
+                border: none;
+                color: white;
+                padding: 6px 12px;
+                font-size: 14px;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: background-color 0.3s ease;
+            }
+            button.action-btn:hover {
+                background-color: #0056b3;
+            }
+            /* Scrollbar optimizations for side pane and content area */
+            #sidePane::-webkit-scrollbar {
+                width: 8px;
+            }
+            #sidePane::-webkit-scrollbar-thumb {
+                background-color: rgba(0, 123, 255, 0.3);
+                border-radius: 4px;
+            }
+            #contentArea::-webkit-scrollbar {
+                width: 10px;
+            }
+            #contentArea::-webkit-scrollbar-thumb {
+                background-color: rgba(0,0,0,0.1);
+                border-radius: 5px;
+            }
+
+            @media (max-width: 768px) {
+                body {
+                    flex-direction: column;
+                    height: auto;
+                }
+                #sidePane {
+                    width: 100%;
+                    border-right: none;
+                    border-bottom: 2px solid rgba(0, 44, 62);
+                    flex-direction: row;
+                    flex-wrap: wrap;
+                    padding: 10px 5px;
+                    overflow-x: auto;
+                }
+                .sideButton {
+                    flex: 1 1 120px;
+                    margin: 5px 5px;
+                    text-align: center;
+                    position: relative;
+                }
+                #contentArea {
+                    padding: 15px;
+                }
+            }
+        </style>
+        <style type="text/css">
+            .st0 {
+                fill:#F0981B;
+            }
+            .st1 {
+                fill:rgba(0,44,62,1);
+            }
+        </style>
+
+    </head>
+    <body>
+        <div id="sidePane" role="navigation" aria-label="Dev Console">
+            <h2>
+                <img src="images/payara-fish-logo.svg" alt="Payara" width="60" height="20">
+                Dev Console
+            </h2>
+                        <button class="sideButton" aria-selected="false" aria-controls="ScopedBeans" id="side-ScopedBeans" tabindex="0" onclick="openPane(event, 'ScopedBeans')">
+                Scoped Beans <span id="count-ScopedBeans" class="count-badge" aria-label="Scoped Beans count"></span>
+            </button>
+            <button class="sideButton" aria-selected="false" aria-controls="Producers" id="side-Producers" tabindex="0" onclick="openPane(event, 'Producers')">
+                Producers <span id="count-Producers" class="count-badge" aria-label="Producers count"></span>
+            </button>
+            <button class="sideButton" aria-selected="false" aria-controls="Interceptors" id="side-Interceptors" tabindex="0" onclick="openPane(event, 'Interceptors')">
+                Interceptors <span id="count-Interceptors" class="count-badge" aria-label="Interceptors count"></span>
+            </button>
+            <button class="sideButton" aria-selected="false" aria-controls="InterceptedClasses" id="side-InterceptedClasses" tabindex="0" onclick="openPane(event, 'InterceptedClasses')">
+                Intercepted Classes <span id="count-InterceptedClasses" class="count-badge" aria-label="InterceptedClasses count"></span>
+            </button>
+            <button class="sideButton" aria-selected="false" aria-controls="Decorators" id="side-Decorators" tabindex="0" onclick="openPane(event, 'Decorators')">
+                Decorators <span id="count-Decorators" class="count-badge" aria-label="Decorators count"></span>
+            </button>
+            <button class="sideButton" aria-selected="false" aria-controls="Extensions" id="side-Extensions" tabindex="0" onclick="openPane(event, 'Extensions')">
+                Extensions <span id="count-Extensions" class="count-badge" aria-label="Extensions count"></span>
+            </button>
+            <button
+                class="sideButton"
+                aria-selected="false"
+                aria-controls="Observer"
+                id="side-Observer"
+                tabindex="0"
+                onclick="openPane(event, 'Observer')"
+                >
+                Observer Events <span id="count-Observer" class="count-badge" aria-label="observer events count"></span>
+            </button>
+            <button
+                class="sideButton"
+                aria-selected="false"
+                aria-controls="Processed"
+                id="side-Processed"
+                tabindex="0"
+                onclick="openPane(event, 'Processed')"
+                >
+                Processed Beans <span id="count-Processed" class="count-badge" aria-label="managed beans count"></span>
+            </button>
+            <button
+                class="sideButton"
+                aria-selected="false"
+                aria-controls="SeenTypes"
+                id="side-SeenTypes"
+                tabindex="0"
+                onclick="openPane(event, 'SeenTypes')"
+                >
+                Seen Types <span id="count-SeenTypes" class="count-badge" aria-label="seen types count"></span>
+            </button>
+            <button class="sideButton" aria-selected="false" aria-controls="BeanGraph" id="side-BeanGraph" tabindex="0" onclick="openPane(event, 'BeanGraph')">Bean Dependency Graph</button>
+            <button class="sideButton" aria-selected="false" aria-controls="RestResources" id="side-RestResources" tabindex="0" onclick="openPane(event, 'RestResources')">
+                REST Resources <span id="count-RestResources" class="count-badge" aria-label="rest resources count"></span>
+            </button>
+            <button class="sideButton" aria-selected="false" aria-controls="RestMethods" id="side-RestMethods" tabindex="0" onclick="openPane(event, 'RestMethods')">
+                REST Methods <span id="count-RestMethods" class="count-badge" aria-label="rest methods count"></span>
+            </button>
+            <button class="sideButton" aria-selected="false" aria-controls="RestExceptionMappers" id="side-RestExceptionMappers" tabindex="0" onclick="openPane(event, 'RestExceptionMappers')">REST Exception Mappers <span id="count-RestExceptionMappers" class="count-badge" aria-label="rest exception mappers count"></span></button>
+            <button class="sideButton" aria-selected="false" aria-controls="SecurityAnnotations" id="side-SecurityAnnotations" tabindex="0" onclick="openPane(event, 'SecurityAnnotations')">Security Annotations <span id="count-SecurityAnnotations" class="count-badge" aria-label="security annotations count"></span></button>
+        </div>
+
+        <div id="contentArea">
+            <input
+                type="text"
+                id="searchInput"
+                aria-label="Search"
+                onkeyup="filterBeans()"
+                placeholder="Search..."
+                />
+
+            <div id="Processed" class="tabcontent" role="tabpanel" aria-labelledby="side-Processed">
+                <div class="action-buttons">
+                    <label for="sort-Processed" style="font-weight:600;">Sort:</label>
+                    <select class="sort-select" id="sort-Processed" aria-label="Sort managed beans" onchange="sortBeans('Processed')">
+                        <option value="asc">A to Z</option>
+                        <option value="desc">Z to A</option>
+                    </select>
+                    <button class="action-btn" onclick="exportCSV('Processed')">Export CSV</button>
+                    <button class="action-btn" onclick="copyToClipboard('Processed')">Copy</button>
+                </div>
+                <table id="ProcessedTable" tabindex="0">
+                    <thead><tr>
+                            <th onclick="sortColumn('Processed', 0)" tabindex="0" aria-sort="none">Type</th>
+                            <th onclick="sortColumn('Processed', 1)" tabindex="0" aria-sort="none">Bean Class</th>
+                        </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="Observer" class="tabcontent" role="tabpanel" aria-labelledby="side-Observer">
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="exportCSV('Observer')">Export CSV</button>
+                    <button class="action-btn" onclick="copyToClipboard('Observer')">Copy</button>
+                </div>
+                <table id="ObserverTable" tabindex="0" role="grid" aria-label="Observer Events Table">
+                    <thead><tr>
+                            <th onclick="sortColumn('Observer', 0)" tabindex="0" aria-sort="none">Event Type</th>
+                            <th onclick="sortColumn('Observer', 1)" tabindex="0" aria-sort="none">Bean Class</th>
+                            <th onclick="sortColumn('Observer', 2)" tabindex="0" aria-sort="none">Reception</th>
+                            <th onclick="sortColumn('Observer', 3)" tabindex="0" aria-sort="none">Phase</th>
+                        </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="SeenTypes" class="tabcontent" role="tabpanel" aria-labelledby="side-SeenTypes">
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="exportCSV('SeenTypes')">Export CSV</button>
+                    <button class="action-btn" onclick="copyToClipboard('SeenTypes')">Copy</button>
+                </div>
+                <table id="SeenTypesTable" tabindex="0">
+                    <thead><tr>
+                            <th onclick="sortColumn('SeenTypes', 0)" tabindex="0" aria-sort="none">Class Name</th>
+                            <th onclick="sortColumn('SeenTypes', 1)" tabindex="0" aria-sort="none">Annotations</th>
+                        </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="RestResources" class="tabcontent" role="tabpanel" aria-labelledby="side-RestResources">
+                <div class="action-buttons">
+                    <label for="sort-RestResources" style="font-weight:600;">Sort:</label>
+                    <select class="sort-select" id="sort-RestResources" aria-label="Sort REST resources" onchange="sortBeans('RestResources')">
+                        <option value="asc">A to Z</option>
+                        <option value="desc">Z to A</option>
+                    </select>
+                    <button class="action-btn" onclick="exportCSV('RestResources')">Export CSV</button>
+                    <button class="action-btn" onclick="copyToClipboard('RestResources')">Copy</button>
+                </div>
+                <table id="RestResourcesTable" tabindex="0">
+                    <thead><tr>
+                            <th onclick="sortColumn('RestResources', 0)" tabindex="0" aria-sort="none">Class</th>
+                            <th onclick="sortColumn('RestResources', 1)" tabindex="0" aria-sort="none">Path</th>
+                        </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="RestMethods" class="tabcontent" role="tabpanel" aria-labelledby="side-RestMethods">
+                <div class="action-buttons">
+                    <label for="sort-RestMethods" style="font-weight:600;">Sort:</label>
+                    <select class="sort-select" id="sort-RestMethods" aria-label="Sort REST methods" onchange="sortBeans('RestMethods')">
+                        <option value="asc">A to Z</option>
+                        <option value="desc">Z to A</option>
+                    </select>
+                    <button class="action-btn" onclick="exportCSV('RestMethods')">Export CSV</button>
+                    <button class="action-btn" onclick="copyToClipboard('RestMethods')">Copy</button>
+                </div>
+                <table id="RestMethodsTable" tabindex="0">
+                    <thead><tr>
+                            <th onclick="sortColumn('RestMethods', 0)" tabindex="0" aria-sort="none">Class</th>
+                            <th onclick="sortColumn('RestMethods', 1)" tabindex="0" aria-sort="none">Path</th>
+                            <th onclick="sortColumn('RestMethods', 2)" tabindex="0" aria-sort="none">Description</th>
+                        </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div id="SecurityAnnotations" class="tabcontent" role="tabpanel" aria-labelledby="side-SecurityAnnotations">
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="exportSecurityAnnotationsCSV()">Export CSV</button>
+                    <button class="action-btn" onclick="copySecurityAnnotationsToClipboard()">Copy</button>
+                </div>
+                <table id="SecurityAnnotationsTable" tabindex="0">
+                    <thead><tr>
+                            <th>Key (Object)</th>
+                            <th>Annotations</th>
+                        </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div id="RestExceptionMappers" class="tabcontent" role="tabpanel" aria-labelledby="side-RestExceptionMappers">
+                <div class="action-buttons">
+                    <label for="sort-RestExceptionMappers" style="font-weight:600;">Sort:</label>
+                    <select class="sort-select" id="sort-RestExceptionMappers" aria-label="Sort REST exception mappers" onchange="sortBeans('RestExceptionMappers')">
+                        <option value="asc">A to Z</option>
+                        <option value="desc">Z to A</option>
+                    </select>
+                    <button class="action-btn" onclick="exportCSV('RestExceptionMappers')">Export CSV</button>
+                    <button class="action-btn" onclick="copyToClipboard('RestExceptionMappers')">Copy</button>
+                </div>
+                <table id="RestExceptionMappersTable" tabindex="0">
+                    <thead><tr>
+                            <th onclick="sortColumn('RestExceptionMappers', 0)" tabindex="0" aria-sort="none">Exception Mapper Class</th>
+                            <th onclick="sortColumn('RestExceptionMappers', 1)" tabindex="0" aria-sort="none">Exception Type</th>
+                        </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="BeanGraph" class="tabcontent" role="tabpanel" aria-labelledby="side-BeanGraph">
+                <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+                <script>
+                                        let securityAnnotations = {};
+
+                                        function fetchSecurityAnnotations() {
+                                            fetch('resources/dev/security-audit')
+                                                    .then(response => {
+                                                        if (!response.ok) {
+                                                            throw new Error('Network response was not ok ' + response.statusText);
+                                                        }
+                                                        return response.json();
+                                                    })
+                                                    .then(data => {
+                                                        securityAnnotations = data;
+                                                        renderSecurityAnnotations();
+                                                    })
+                                                    .catch(error => {
+                                                        console.error('Error fetching security annotations:', error);
+                                                    });
+                                        }
+
+                                        function renderSecurityAnnotations() {
+                                            const tbody = document.getElementById('SecurityAnnotationsTable').querySelector('tbody');
+                                            tbody.innerHTML = '';
+
+                                            // The data is a Map<Object, Set<Annotation>> serialized as JSON
+                                            // We will iterate over the keys and annotations and display them
+                                            for (const key in securityAnnotations) {
+                                                if (securityAnnotations.hasOwnProperty(key)) {
+                                                    const annotations = securityAnnotations[key];
+                                                    const annotationList = Array.isArray(annotations) ? annotations : [];
+                                                    const annotationsStr = annotationList.map(a => {
+                                                        if (typeof a === 'object' && a !== null) {
+                                                            // Serialize annotation object in a readable string
+                                                            return a.type || JSON.stringify(a);
+                                                        } else {
+                                                            return a.toString();
+                                                        }
+                                                    }).join(', ');
+
+                                                    const tr = document.createElement('tr');
+                                                    tr.innerHTML = `
+                                    <td>${annotations.key}</td>
+                                    <td>${annotations.annotationClassNames}</td>
+                                `;
+                                                    tbody.appendChild(tr);
+                                                }
+                                            }
+                                        }
+
+                                        function exportSecurityAnnotationsCSV() {
+                                            const rows = [];
+                                            const tbody = document.getElementById('SecurityAnnotationsTable').querySelector('tbody');
+                                            if (!tbody) {
+                                                alert('No data to export.')
+                                                return;
+                                            }
+                                            const trs = tbody.querySelectorAll('tr');
+                                            trs.forEach(tr => {
+                                                const cells = Array.from(tr.children).map(td => td.textContent.trim());
+                                                rows.push(cells);
+                                            });
+                                            if (rows.length === 0) {
+                                                alert('No data to export.')
+                                                return;
+                                            }
+                                            let csvContent = rows.map(row => row.map(value => {
+                                                    if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+                                                        return '"' + value.replace(/"/g, '""') + '"';
+                                                    }
+                                                    return value;
+                                                }).join(',')).join('\n');
+                                            const blob = new Blob([csvContent], {type: 'text/csv;charset=utf-8;'});
+                                            const url = URL.createObjectURL(blob);
+                                            const link = document.createElement('a');
+                                            link.setAttribute('href', url);
+                                            link.setAttribute('download', 'security_annotations.csv');
+                                            link.style.visibility = 'hidden';
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                        }
+
+                                        function copySecurityAnnotationsToClipboard() {
+                                            const tbody = document.getElementById('SecurityAnnotationsTable').querySelector('tbody');
+                                            if (!tbody) {
+                                                alert('No data to copy.')
+                                                return;
+                                            }
+                                            const trs = tbody.querySelectorAll('tr');
+                                            if (trs.length === 0) {
+                                                alert('No data to copy.')
+                                                return;
+                                            }
+                                            let text = '';
+                                            trs.forEach(tr => {
+                                                const cells = Array.from(tr.children).map(td => td.textContent.trim());
+                                                text += cells.join('\t') + '\n';
+                                            });
+                                            navigator.clipboard.writeText(text).then(() => {
+                                                alert('Copied to clipboard');
+                                            }).catch(() => {
+                                                alert('Failed to copy');
+                                            });
+                                        }
+
+                                        // Combined single openPane function including SecurityAnnotations handling
+                                        function openPane(evt, tabName) {
+                                            const tabcontent = document.getElementsByClassName('tabcontent');
+                                            for (const tab of tabcontent) {
+                                                tab.style.display = 'none';
+                                                tab.setAttribute('aria-hidden', 'true');
+                                            }
+                                            const sideButtons = document.getElementsByClassName('sideButton');
+                                            for (const btn of sideButtons) {
+                                                btn.classList.remove('active');
+                                                btn.setAttribute('aria-selected', 'false');
+                                            }
+                                            const activeTab = document.getElementById(tabName);
+                                            if (activeTab) {
+                                                activeTab.style.display = 'block';
+                                                activeTab.setAttribute('aria-hidden', 'false');
+                                            }
+                                            evt.currentTarget.classList.add('active');
+                                            evt.currentTarget.setAttribute('aria-selected', 'true');
+                                            evt.currentTarget.focus();
+
+                                            localStorage.setItem('activeTab', tabName);
+                                            filterBeans();
+
+            //            if (tabName === 'SecurityAnnotations') {
+            ////                fetchSecurityAnnotations();
+            ////                document.getElementById('searchInput').style.display = 'none';
+            ////            } else {
+            //                document.getElementById('searchInput').style.display = 'block';
+            //            }
+                                        }
+
+                                        // New script for rendering Bean Dependency Graph
+                                        function renderBeanGraph(graphData) {
+                                            const nodes = [];
+                                            const edges = [];
+
+                                            Object.values(graphData.nodes).forEach(node => {
+                                                nodes.push({id: node.beanId, label: node.beanType, title: node.description, shape: 'box', color: 'rgba(0, 44, 62)', font: {color: '#fff'}});
+                                                node.dependencies.forEach(dep => {
+                                                    edges.push({from: node.beanId, to: dep.beanId, arrows: 'to'});
+                                                });
+                                            });
+
+                                            const container = document.getElementById('graphContainer');
+                                            const data = {nodes: new vis.DataSet(nodes), edges: new vis.DataSet(edges)};
+                                            const options = {
+                                                layout: {hierarchical: {direction: 'UD', sortMethod: 'directed'}},
+                                                edges: {smooth: true, arrows: {to: {enabled: true, scaleFactor: 1}}},
+                                                interaction: {hover: true, navigationButtons: true, keyboard: true},
+                                                physics: {enabled: false}
+                                            };
+
+                                            new vis.Network(container, data, options);
+                                        }
+
+                                        document.addEventListener('DOMContentLoaded', () => {
+                                            fetch('resources/dev/bean-graph')
+                                                    .then(response => response.json())
+                                                    .then(data => {
+                                                        renderBeanGraph(data);
+                                                    })
+                                                    .catch(err => console.error('Failed to load bean dependency graph:', err));
+                                        });
+                </script>
+                <div id="graphContainer" style="width: 100%; height: 500px; background: #fff; border: 1px solid #ccc; border-radius: 6px;"></div>
+            </div>
+
+            <!-- New tabs for the requested endpoints -->
+            <div id="ScopedBeans" class="tabcontent" role="tabpanel" aria-labelledby="side-ScopedBeans">
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="exportCSV('ScopedBeans')">Export CSV</button>
+                    <button class="action-btn" onclick="copyToClipboard('ScopedBeans')">Copy</button>
+                </div>
+                <table id="ScopedBeansTable" tabindex="0">
+                    <thead><tr>
+                        <th>Scope</th>
+                        <th>Bean Class</th>
+                        <th>Types</th>
+                        <th>Name</th>
+                        <th>Qualifiers</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="Producers" class="tabcontent" role="tabpanel" aria-labelledby="side-Producers">
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="exportCSV('Producers')">Export CSV</button>
+                    <button class="action-btn" onclick="copyToClipboard('Producers')">Copy</button>
+                </div>
+                <table id="ProducersTable" tabindex="0">
+                    <thead><tr>
+                            <th>Producer Class</th>
+                            <th>Produced Type</th>
+                            <th>Kind</th>
+                            <th>Member Signature</th>
+                        </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="Interceptors" class="tabcontent" role="tabpanel" aria-labelledby="side-Interceptors">
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="exportCSV('Interceptors')">Export CSV</button>
+                    <button class="action-btn" onclick="copyToClipboard('Interceptors')">Copy</button>
+                </div>
+                <table id="InterceptorsTable" tabindex="0">
+                    <thead><tr>
+                        <th>Interceptor Class Name</th>
+                        <th>Interceptor Bindings</th>
+                        <th>Priority</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="InterceptedClasses" class="tabcontent" role="tabpanel" aria-labelledby="side-InterceptedClasses">
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="exportCSV('InterceptedClasses')">Export CSV</button>
+                    <button class="action-btn" onclick="copyToClipboard('InterceptedClasses')">Copy</button>
+                </div>
+                <table id="InterceptedClassesTable" tabindex="0">
+                    <thead><tr>
+                        <th>Intercepted Class Name</th>
+                        <th>Interceptor Bindings</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="Decorators" class="tabcontent" role="tabpanel" aria-labelledby="side-Decorators">
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="exportCSV('Decorators')">Export CSV</button>
+                    <button class="action-btn" onclick="copyToClipboard('Decorators')">Copy</button>
+                </div>
+                <table id="DecoratorsTable" tabindex="0">
+                    <thead><tr>
+                        <th>Decorator Class Name</th>
+                        <th>Delegate Type</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="Extensions" class="tabcontent" role="tabpanel" aria-labelledby="side-Extensions">
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="exportCSV('Extensions')">Export CSV</button>
+                    <button class="action-btn" onclick="copyToClipboard('Extensions')">Copy</button>
+                </div>
+                <table id="ExtensionsTable" tabindex="0">
+                    <thead><tr>
+                        <th>Extension Class Name</th>
+                    </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+        </div>
+
+        <script>
+            // Reuse existing scripts with slight modification for side pane tabs
+            let beans = [];
+            let observerEvents = [];
+            let seenTypes = [];
+            let restResources = [];
+            let restMethods = [];
+
+            // New arrays for new endpoints
+            let scopedBeans = [];
+            let producers = [];
+            let interceptors = [];
+            let interceptedClasses = [];
+            let decorators = [];
+            let extensions = [];
+            let restExceptionMappers = [];
+
+
+            let currentSortColumn = {};
+            let currentSortOrder = {};
+
+            function escapeCsv(value) {
+                if (typeof value !== 'string')
+                    return value;
+                if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+                    return '"' + value.replace(/"/g, '""') + '"';
+                }
+                return value;
+            }
+
+            function exportCSV(type) {
+                const rows = [];
+                const table = document.getElementById(type + 'Table');
+                if (!table) {
+                    alert('No data to export in this tab.');
+                    return;
+                }
+                const trs = table.querySelectorAll('tbody tr');
+                trs.forEach(tr => {
+                    const cells = Array.from(tr.children).map(td => td.textContent.trim());
+                    rows.push(cells);
+                });
+                if (rows.length === 0) {
+                    alert('No data to export in this tab.');
+                    return;
+                }
+                let csvContent = rows.map(e => e.map(escapeCsv).join(',')).join('\n');
+                const blob = new Blob([csvContent], {type: 'text/csv;charset=utf-8;'});
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', type + '_beans.csv');
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            function copyToClipboard(type) {
+                const table = document.getElementById(type + 'Table');
+                if (!table) {
+                    alert('No data to copy in this tab.');
+                    return;
+                }
+                const trs = table.querySelectorAll('tbody tr');
+                if (trs.length === 0) {
+                    alert('No data to copy in this tab.');
+                    return;
+                }
+                let text = '';
+                trs.forEach(tr => {
+                    const cells = Array.from(tr.children).map(td => td.textContent.trim());
+                    text += cells.join('\t') + '\n';
+                });
+                navigator.clipboard.writeText(text).then(() => {
+                    alert('Copied to clipboard');
+                }).catch(() => {
+                    alert('Failed to copy');
+                });
+            }
+
+            function highlight(text, filter) {
+                if (!filter)
+                    return text;
+                const regex = new RegExp(`(${filter.replace(/[.*+?^${}()|[\\]\\/g, '\\\\$&')})`, 'gi');
+                return text.replace(regex, '<span class="highlight">$1<\/span>');
+            }
+
+            // Keys for all tabs
+            const keys = ['Observer', 'Processed', 'SeenTypes', 'RestResources', 'RestMethods', 'RestExceptionMappers', 'ScopedBeans', 'Producers', 'Interceptors', 'InterceptedClasses', 'Decorators', 'Extensions'];
+            const categorized = {};
+            keys.forEach(k => categorized[k] = []);
+
+            function categorizeBeans() {
+                keys.forEach(type => categorized[type] = []);
+
+                // Existing categories
+                beans.forEach(bean => {
+                    categorized.Processed.push(bean.description || '');
+                });
+
+                categorized.SeenTypes = seenTypes.map(st => st.className + (st.annotations.length > 0 ? ' (' + st.annotations.join(', ') + ')' : ''));
+                categorized.RestResources = Array.isArray(restResources) ? restResources.slice() : [];
+                categorized.RestMethods = Array.isArray(restMethods) ? restMethods.slice() : [];
+                categorized.RestExceptionMappers = Array.isArray(restExceptionMappers) ? restExceptionMappers.slice() : [];
+                categorized.ScopedBeans = scopedBeans.slice();
+                categorized.Producers = producers.slice();
+                categorized.Interceptors = interceptors.slice();
+                categorized.InterceptedClasses = interceptedClasses.slice();
+                categorized.Decorators = decorators.slice();
+                categorized.Extensions = extensions.slice();
+
+                // Update tab counts
+                Object.keys(categorized).forEach(type => {
+                    const countElem = document.getElementById('count-' + type);
+                    if (countElem) {
+                        countElem.textContent = categorized[type].length;
+                    }
+                });
+
+                // Handle SecurityAnnotations count
+                const securityAnnotationsCountElem = document.getElementById('count-SecurityAnnotations');
+                if (securityAnnotationsCountElem && securityAnnotations) {
+                    const secAnnCount = Object.keys(securityAnnotations).length;
+                    securityAnnotationsCountElem.textContent = secAnnCount;
+                }
+
+                // Update Observer events count
+                const observerCountElem = document.getElementById('count-Observer');
+                if (observerCountElem) {
+                    observerCountElem.textContent = observerEvents.length;
+                }
+            }
+
+
+            function parseSeenTypes(bean) {
+                return {
+                    className: bean.className || bean,
+                    annotations: bean.annotations || []
+                };
+            }
+
+            function parseProcessed(bean) {
+                let type = bean.split("[")[0].trim();
+                if (type.length > 25) {
+                    type = type.split(/[\s%]/)[0]; // split by space or %
+                } 
+                if (type.includes("@")) {
+                    type = "Bean";
+                }
+                return { type: type, class: bean, details: '' };
+            }
+
+            // Parsing function for exception mappers
+            function parseRestExceptionMapper(bean) {
+                debugger;
+                if(typeof bean === 'string ') {
+                    return {
+                        mapperClass: bean,
+                        exceptionType: ''
+                    };
+            } else if(bean && typeof bean === 'object') {
+                const mapperClass = Object.keys(bean)[0];
+                const exceptionType = bean[mapperClass];
+                    return {
+                        mapperClass: mapperClass,
+                        exceptionType: exceptionType || ''
+                    };
+                    }
+                return { mapperClass: '', exceptionType: '' };
+            }
+
+            // Parsing function for the new tabs
+            function parseBeanDTO(bean) {
+                return {
+                    type: bean.scope ? bean.scope.substring(bean.scope.lastIndexOf('.') + 1) : '',
+                    className: bean.beanClass || bean.className || ''
+                };
+            }
+
+            function renderBeans() {
+                const filter = document.getElementById('searchInput').value.toLowerCase();
+                keys.forEach(type => {
+                    const tbody = document.getElementById(type + 'Table')?.querySelector('tbody');
+                    if (!tbody) return;
+
+                    tbody.innerHTML = '';
+                    let filteredBeans = [];
+
+                    if(type === 'RestExceptionMappers') {
+                        debugger;
+                        filteredBeans = categorized.RestExceptionMappers.filter(mapping => {
+                            const m = parseRestExceptionMapper(mapping);
+                            return m.mapperClass.toLowerCase().includes(filter) || (m.exceptionType && m.exceptionType.toLowerCase().includes(filter));
+                        });
+                    } else if(type === 'Processed') {
+                        filteredBeans = categorized[type].filter(bean => bean.toLowerCase().includes(filter));
+                    } else if(type === 'SeenTypes') { 
+                        filteredBeans = categorized.SeenTypes.filter(bean => {
+                            return bean.toLowerCase().includes(filter);
+                        }).map(beanStr => {
+                            let namePart = beanStr;
+                            let annotationsPart = '';
+                            const match = beanStr.match(/^(.+?) \((.+)\)$/);
+                            if(match) {
+                                namePart = match[1];
+                                annotationsPart = match[2];
+                            }
+                            return {
+                                className: namePart,
+                                annotations: annotationsPart.split(', ').filter(a => a.length > 0)
+                            };
+                        });
+                    } else if (type === 'ScopedBeans') {
+                        categorized[type].forEach(bean => {
+                            const tr = document.createElement('tr');
+                            const qualifiers = Array.isArray(bean.qualifiers) ? bean.qualifiers.join(', ') : '';
+                            const types = Array.isArray(bean.types) ? bean.types.join(', ') : '';
+                            tr.innerHTML = `
+                                <td>${highlight(bean.scope ? bean.scope.substring(bean.scope.lastIndexOf('.') + 1) : '', filter)}</td>
+                                <td>${highlight(bean.beanClass || '', filter)}</td>
+                                <td>${highlight(types, filter)}</td>
+                                <td>${highlight(bean.name || '', filter)}</td>
+                                <td>${highlight(qualifiers, filter)}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    } else if (type === 'InterceptedClasses') {
+                        filteredBeans = categorized[type].filter(bean => {
+                            const parsed = parseBeanDTO(bean);
+                            return parsed.type.toLowerCase().includes(filter) || parsed.className.toLowerCase().includes(filter);
+                        });
+                        filteredBeans.forEach(bean => {
+                            const p = parseBeanDTO(bean);
+                            const tr = document.createElement('tr');
+                            const interceptorBindings = Array.isArray(bean.interceptorBindings) ? bean.interceptorBindings.join(', ') : '';
+                            tr.innerHTML = `
+                                <td>${highlight(bean.className || '', filter)}</td>
+                                <td>${highlight(interceptorBindings, filter)}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    } else if (type === 'Producers') {
+                        filteredBeans = categorized[type].filter(p => JSON.stringify(p).toLowerCase().includes(filter));
+                        filteredBeans.forEach(bean => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${highlight(bean.producerClass || '', filter)}</td>
+                                <td>${highlight(bean.producedType || '', filter)}</td>
+                                <td>${highlight(bean.kind || '', filter)}</td>
+                                <td>${highlight(bean.memberSignature || '', filter)}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    } else if (type === 'Interceptors') {
+                        filteredBeans = categorized[type].filter(p => JSON.stringify(p).toLowerCase().includes(filter));
+                        filteredBeans.forEach(bean => {
+                            let scopeDisplay = bean.scope;
+                            if (scopeDisplay === 'jakarta.enterprise.context.Dependent') {
+                                scopeDisplay = 'Dependent';
+                            }
+                            const tr = document.createElement('tr');
+                            /* Render each column for interceptor as requested */
+                            tr.innerHTML = `
+                                <td>${highlight(bean.className || '', filter)}</td>
+                                <td>${highlight((bean.interceptorBindings || []).join(', '), filter)}</td>
+                                <td>${highlight(bean.priority != null ? bean.priority.toString() : '', filter)}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    } else if (type === 'Decorators') {
+                        filteredBeans = categorized[type].filter(p => JSON.stringify(p).toLowerCase().includes(filter));
+                        filteredBeans.forEach(bean => {
+                            let scopeDisplay = bean.scope;
+                            if (scopeDisplay === 'jakarta.enterprise.context.Dependent') {
+                                scopeDisplay = 'Dependent';
+                            }
+                            const tr = document.createElement('tr');
+                            /* Render each column for decorator as requested */
+                            tr.innerHTML = `
+                                <td>${highlight(bean.className || '', filter)}</td>
+                                <td>${highlight(bean.delegateType || '', filter)}</td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                    } else if (type === 'Extensions') {
+                        filteredBeans = categorized[type].filter(name => name.toLowerCase().includes(filter));
+                        filteredBeans.forEach(name => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `<td>${highlight(name, filter)}</td>`;
+                            tbody.appendChild(tr);
+                        });
+                    } else {
+                        filteredBeans = observerEvents.filter(event => {
+                            return event.eventTypeName.toLowerCase().includes(filter) ||
+                                    event.beanClass.toLowerCase().includes(filter) ||
+                                    event.reception.toLowerCase().includes(filter) ||
+                                    event.transactionPhase.toLowerCase().includes(filter);
+                        });
+                    }
+
+                    if (currentSortColumn[type] !== undefined) {
+                        const col = currentSortColumn[type];
+                        const order = currentSortOrder[type];
+                        filteredBeans.sort((a, b) => {
+                            let aVal, bVal;
+                            if(type === 'Observer') {
+                                switch(col) {
+                                    case 0: aVal = a.eventTypeName;
+                                        bVal = b.eventTypeName;
+                                        break;
+                                    case 1: aVal = a.beanClass; bVal = b.beanClass; break;
+                                    case 2: aVal = a.reception; bVal = b.reception; break;
+                                    case 3: aVal = a.transactionPhase; bVal = b.transactionPhase; break;
+                                    default: aVal = a.eventTypeName;
+                                        bVal = b.eventTypeName;
+                                }
+                            } else if(type === 'SeenTypes') {
+                                switch(col) {
+                                    case 0: aVal = a.className.toLowerCase(); bVal = b.className.toLowerCase(); break;
+                                    case 1: aVal = a.annotations.join(", ").toLowerCase(); bVal = b.annotations.join(", ").toLowerCase(); break;
+                                    default: aVal = a.className.toLowerCase(); bVal = b.className.toLowerCase();
+                                }
+                            } else if(type === 'RestExceptionMappers') {
+                                const aParsed = parseRestExceptionMapper(a);
+                                const bParsed = parseRestExceptionMapper(b);
+                                aVal = col === 0 ? aParsed.mapperClass : aParsed.exceptionType;
+                                bVal = col === 0 ? bParsed.mapperClass : bParsed.exceptionType;
+                            } else {
+                                switch (type) {
+                                    case 'Processed':
+                                        aVal = Object.values(parseProcessed(a))[col];
+                                        bVal = Object.values(parseProcessed(b))[col];
+                                        break;
+                                    case 'RestResources':
+                                    case 'RestMethods':
+                                        aVal = (a.className || '').toLowerCase();
+                                        bVal = (b.className || '').toLowerCase();
+                                        break;
+                                    default:
+                                        aVal = a;
+                                        bVal = b;
+                                }
+                            }
+                            aVal = aVal ? aVal.toLowerCase() : '';
+                            bVal = bVal ? bVal.toLowerCase() : '';
+                            if (aVal < bVal) return order === 'asc' ? -1 : 1;
+                            if (aVal > bVal) return order === 'asc' ? 1 : -1;
+                            return 0;
+                        });
+                    } else {
+                        if(type !== 'Observer') {
+                            filteredBeans.sort();
+                        }
+                    }
+
+                    if (!['ScopedBeans', 'InterceptedClasses', 'Producers', 'Interceptors', 'Decorators', 'Extensions', 'RestResources', 'RestMethods', 'Observer', 'SeenTypes', 'Processed', 'RestExceptionMappers'].includes(type)) {
+                        filteredBeans.forEach(bean => {
+                            const tr = document.createElement('tr');
+                            tr.textContent = bean;
+                            tbody.appendChild(tr);
+                        });
+                    }
+
+                    // Render rows already specifically handled for some types
+                    if (type === 'Processed') {
+                        filteredBeans.forEach(bean => {
+                            const p = parseProcessed(bean);
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                              <td class='bean-type'>${p.type}</td>
+                              <td class='bean-class'>${highlight(p.class, filter)}</td>
+                              <td class='bean-details'>${highlight(p.details, filter)}</td>`;
+                            tbody.appendChild(tr);
+                        });
+                    } else if (type === 'Observer') {
+                        filteredBeans.forEach(bean => {
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `
+                                <td>${highlight(bean.eventTypeName, filter)}</td>
+                                <td>${highlight(bean.beanClass, filter)}</td>
+                                <td>${highlight(bean.reception, filter)}</td>
+                                <td>${highlight(bean.transactionPhase, filter)}</td>`;
+                            tbody.appendChild(tr);
+                        });
+                    } else if (type === 'SeenTypes') {
+                        filteredBeans.forEach(bean => {
+                            const tr = document.createElement('tr');
+                            const p = bean;
+                            tr.innerHTML = `<td>${highlight(p.className, filter)}</td><td>${highlight(p.annotations.join(", "), filter)}</td>`;
+                            tbody.appendChild(tr);
+                        });
+                    } else if (type === 'RestExceptionMappers') {
+                        filteredBeans.forEach(bean => {
+                            const p = parseRestExceptionMapper(bean);
+                            const tr = document.createElement('tr');
+                            tr.innerHTML = `<td>${highlight(p.mapperClass, filter)}</td><td>${highlight(p.exceptionType, filter)}</td>`;
+                            tbody.appendChild(tr);
+                        });
+                    }
+                restResources.forEach(bean => {
+                    if (type === 'RestResources') {
+                        const tr = document.createElement('tr');
+                        if(bean.className || bean.path) {
+                            tr.innerHTML = `<td>${highlight(bean.className || '', filter)}</td><td>${highlight(bean.path || '', filter)}</td>`;
+                        } else {
+                            tr.innerHTML = `<td>${highlight(bean, filter)}</td><td></td>`;
+                        }
+                        tbody.appendChild(tr);
+                    }
+                });
+                restMethods.forEach(bean => {
+                    if (type === 'RestMethods') {
+                        const tr = document.createElement('tr');
+                        if(bean.methodSignature || bean.path || bean.httpMethodAndProduces) {
+                            tr.innerHTML = `<td>${highlight(bean.methodSignature || '', filter)}</td><td>${highlight(bean.path || '', filter)}</td><td>${highlight(bean.httpMethodAndProduces || '', filter)}</td>`;
+                        } else {
+                            tr.innerHTML = `<td>${highlight(bean, filter)}</td><td></td>`;
+                        }
+                        tbody.appendChild(tr);
+                    }
+                });
+                });
+            }
+
+            function filterBeans() {
+                renderBeans();
+                saveState();
+            }
+
+            function sortBeans(type) {
+                currentSortColumn[type] = 0;
+                currentSortOrder[type] = document.getElementById('sort-' + type)?.value || 'asc';
+                renderBeans();
+                saveState();
+            }
+
+            function sortColumn(type, colIndex) {
+                if (currentSortColumn[type] === colIndex) {
+                    currentSortOrder[type] = currentSortOrder[type] === 'asc' ? 'desc' : 'asc';
+                } else {
+                    currentSortColumn[type] = colIndex;
+                    currentSortOrder[type] = 'asc';
+                }
+                const sortSelect = document.getElementById('sort-' + type);
+                if (sortSelect) {
+                    sortSelect.value = 'asc';
+                }
+                updateSortArrows(type);
+                renderBeans();
+                saveState();
+            }
+
+            function updateSortArrows(type) {
+                const table = document.getElementById(type + 'Table');
+                if (!table) return;
+                const ths = table.querySelectorAll('th');
+                ths.forEach((th, idx) => {
+                    th.classList.remove('sort-asc', 'sort-desc');
+                    if (idx === currentSortColumn[type]) {
+                        th.classList.add(currentSortOrder[type] === 'asc' ? 'sort-asc' : 'sort-desc');
+                        th.setAttribute('aria-sort', currentSortOrder[type] === 'asc' ? 'ascending' : 'descending');
+                    } else {
+                        th.setAttribute('aria-sort', 'none');
+                    }
+                });
+            }
+
+            function saveState() {
+                localStorage.setItem('searchFilter', document.getElementById('searchInput').value);
+                localStorage.setItem('sortOrder', JSON.stringify(currentSortOrder));
+                localStorage.setItem('sortColumn', JSON.stringify(currentSortColumn));
+            }
+            function restoreState() {
+                const activeTab = localStorage.getItem('activeTab') || 'Processed';
+                const searchFilter = localStorage.getItem('searchFilter') || '';
+                const sortOrder = JSON.parse(localStorage.getItem('sortOrder') || '{}');
+                const sortColumn = JSON.parse(localStorage.getItem('sortColumn') || '{}');
+
+                document.getElementById('searchInput').value = searchFilter;
+                currentSortOrder = sortOrder;
+                currentSortColumn = sortColumn;
+
+                const sideButton = document.getElementById('side-' + activeTab);
+                if (sideButton) {
+                    sideButton.click();
+                } else {
+                    document.querySelector('.sideButton').click();
+                }
+            }
+
+            document.getElementById('sidePane').addEventListener('keydown', e => {
+                const btns = Array.from(document.querySelectorAll('.sideButton'));
+                let idx = btns.findIndex(b => b.getAttribute('aria-selected') === 'true');
+                if (e.key === 'ArrowDown') {
+                    idx = (idx + 1) % btns.length;
+                    btns[idx].focus();
+                    btns[idx].click();
+                    e.preventDefault();
+                } else if (e.key === 'ArrowUp') {
+                    idx = (idx - 1 + btns.length) % btns.length;
+                    btns[idx].focus();
+                    btns[idx].click();
+                    e.preventDefault();
+                }
+                });
+
+            document.addEventListener('DOMContentLoaded', () => {
+                fetchSecurityAnnotations();
+                fetch('resources/dev/beans')
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok ' + response.statusText);
+                            }
+                            return response.json();
+                    })
+                        .then(data => {
+                            beans = data;
+                            categorizeBeans();
+                            restoreState();
+                            filterBeans();
+                    })
+                        .catch(error => {
+                            console.error('Error fetching beans JSON:', error);
+                    });
+
+                fetch('resources/dev/observers')
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok ' + response.statusText);
+                            }
+                            return response.json();
+                    })
+                        .then(eventsData => {
+                            observerEvents = eventsData;
+                            categorizeBeans();
+                            const activeTab = localStorage.getItem('activeTab') || 'Processed';
+                            if(activeTab === 'Observer'){
+                                filterBeans();
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching observer events:', error);
+                    });
+
+                fetch('resources/dev/seen-types')
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok ' + response.statusText);
+                            }
+                            return response.json();
+                    })
+                        .then(seenTypesData => {
+                            seenTypes = seenTypesData;
+                            categorizeBeans();
+                            const activeTab = localStorage.getItem('activeTab') || 'Processed';
+                            if(activeTab === 'SeenTypes'){
+                                filterBeans();
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching seen types:', error);
+                    });
+
+                fetch('resources/dev/rest-resources')
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok ' + response.statusText);
+                            }
+                            return response.json();
+                    })
+                        .then(restResourcesData => {
+                            restResources = restResourcesData;
+                            categorizeBeans();
+                            const activeTab = localStorage.getItem('activeTab') || 'Processed';
+                            if(activeTab === 'RestResources'){
+                                filterBeans();
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching REST resources:', error);
+                    });
+
+                fetch('resources/dev/rest-methods')
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok ' + response.statusText);
+                            }
+                            return response.json();
+                    })
+                        .then(restMethodsData => {
+                            restMethods = restMethodsData;
+                            categorizeBeans();
+                            const activeTab = localStorage.getItem('activeTab') || 'Processed';
+                            if(activeTab === 'RestMethods'){
+                                filterBeans();
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching REST methods:', error);
+                    });
+
+                fetch('resources/dev/rest-exception-mappers')
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Network response was not ok ' + response.statusText);
+                            }
+                            return response.json();
+                    })
+                        .then(exceptionMappersData => {
+                            restExceptionMappers = Object.entries(exceptionMappersData).map(([mapper, exType]) => ({ [mapper]: exType }));
+                            categorizeBeans();
+                            const activeTab = localStorage.getItem('activeTab') || 'Processed';
+                            if(activeTab === 'RestExceptionMappers'){
+                                filterBeans();
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error fetching REST exception mappers:', error);
+                    });
+
+                // Fetch new data for requested endpoints
+                fetch('resources/dev/scoped-beans')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok ' + response.statusText);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        scopedBeans = data;
+                        categorizeBeans();
+                        const activeTab = localStorage.getItem('activeTab') || 'Processed';
+                        if(activeTab === 'ScopedBeans') {
+                            filterBeans();
+                        }
+                    })
+                    .catch(error => console.error('Error fetching scoped beans:', error));
+
+                fetch('resources/dev/producers')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok ' + response.statusText);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        producers = data;
+                        categorizeBeans();
+                        const activeTab = localStorage.getItem('activeTab') || 'Processed';
+                        if(activeTab === 'Producers') {
+                            filterBeans();
+                        }
+                    })
+                    .catch(error => console.error('Error fetching producers:', error));
+
+                fetch('resources/dev/interceptors')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok ' + response.statusText);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        interceptors = data;
+                        categorizeBeans();
+                        const activeTab = localStorage.getItem('activeTab') || 'Processed';
+                        if(activeTab === 'Interceptors') {
+                            filterBeans();
+                        }
+                    })
+                    .catch(error => console.error('Error fetching interceptors:', error));
+
+                fetch('resources/dev/intercepted-classes')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok ' + response.statusText);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        interceptedClasses = data;
+                        categorizeBeans();
+                        const activeTab = localStorage.getItem('activeTab') || 'Processed';
+                        if(activeTab === 'InterceptedClasses') {
+                            filterBeans();
+                        }
+                    })
+                    .catch(error => console.error('Error fetching intercepted classes:', error));
+
+                fetch('resources/dev/decorators')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok ' + response.statusText);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        decorators = data;
+                        categorizeBeans();
+                        const activeTab = localStorage.getItem('activeTab') || 'Processed';
+                        if(activeTab === 'Decorators') {
+                            filterBeans();
+                        }
+                    })
+                    .catch(error => console.error('Error fetching decorators:', error));
+
+                fetch('resources/dev/extension')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok ' + response.statusText);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        extensions = data;
+                        categorizeBeans();
+                        const activeTab = localStorage.getItem('activeTab') || 'Processed';
+                        if(activeTab === 'Extensions') {
+                            filterBeans();
+                        }
+                    })
+                    .catch(error => console.error('Error fetching extensions:', error));
+
+            });
+        </script>
+    </body>
+</html>
