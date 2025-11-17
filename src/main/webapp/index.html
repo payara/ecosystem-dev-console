@@ -43,6 +43,16 @@
             <button
                 class="sideButton"
                 aria-selected="false"
+                aria-controls="Events"
+                id="side-Events"
+                tabindex="0"
+                onclick="openPane(event, 'Events')"
+                >
+                Live Events <span id="count-Events" class="count-badge" aria-label="Events count"></span>
+            </button>
+            <button
+                class="sideButton"
+                aria-selected="false"
                 aria-controls="Processed"
                 id="side-Processed"
                 tabindex="0"
@@ -110,6 +120,22 @@
                             <th onclick="sortColumn('Observer', 1)" tabindex="0" aria-sort="none">Bean Class</th>
                             <th onclick="sortColumn('Observer', 2)" tabindex="0" aria-sort="none">Reception</th>
                             <th onclick="sortColumn('Observer', 3)" tabindex="0" aria-sort="none">Phase</th>
+                        </tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="Events" class="tabcontent" role="tabpanel" aria-labelledby="side-Events">
+                <div class="action-buttons">
+                    <button class="action-btn" onclick="exportCSV('Events')">Export CSV</button>
+                    <button class="action-btn" onclick="copyToClipboard('Events')">Copy</button>
+                </div>
+                <table id="EventsTable" tabindex="0" role="grid" aria-label="Events Table">
+                    <thead><tr>
+                            <th onclick="sortColumn('Events', 0)" tabindex="0" aria-sort="none">Event Type</th>
+                            <th onclick="sortColumn('Events', 1)" tabindex="0" aria-sort="none">Fired By</th>
+                            <th onclick="sortColumn('Events', 2)" tabindex="0" aria-sort="none">Timestamp</th>
+                            <th onclick="sortColumn('Events', 3)" tabindex="0" aria-sort="none">Notified Observers</th>
                         </tr></thead>
                     <tbody></tbody>
                 </table>

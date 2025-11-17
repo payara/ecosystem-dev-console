@@ -32,10 +32,16 @@ function categorizeBeans() {
         securityAnnotationsCountElem.textContent = secAnnCount;
     }
 
-    // Update Observer events count
+    // Observer events count
     const observerCountElem = document.getElementById('count-Observer');
     if (observerCountElem) {
         observerCountElem.textContent = observerEvents.length;
+    }
+    
+    // Events recipient count
+    const eventCountElem = document.getElementById('count-Events');
+    if (eventCountElem) {
+        eventCountElem.textContent = events.length;
     }
 }
 
@@ -198,6 +204,13 @@ function renderBeans() {
                 tr.innerHTML = `<td>${highlight(name, filter)}</td>`;
                 tbody.appendChild(tr);
             });
+        } else if (type === 'Events') {
+            debugger;
+            filteredBeans = events.filter(event => {
+                return event.eventType.toLowerCase().includes(filter) ||
+                        event.firedBy.toLowerCase().includes(filter) ||
+                        event.notifiedObservers.toString().toLowerCase().includes(filter);
+            });
         } else {
             filteredBeans = observerEvents.filter(event => {
                 return event.eventTypeName.toLowerCase().includes(filter) ||
@@ -233,6 +246,28 @@ function renderBeans() {
                         default:
                             aVal = a.eventTypeName;
                             bVal = b.eventTypeName;
+                    }
+                } else if (type === 'Events') {
+                    switch (col) {
+                        case 0:
+                            aVal = a.eventType;
+                            bVal = b.eventType;
+                            break;
+                        case 1:
+                            aVal = a.firedBy;
+                            bVal = b.firedBy;
+                            break;
+                        case 2:
+                            aVal = a.timestamp;
+                            bVal = b.timestamp;
+                            break;
+                        case 3:
+                            aVal = a.notifiedObservers.join(', ');
+                            bVal = b.notifiedObservers.join(', ');
+                            break;
+                        default:
+                            aVal = a.eventType;
+                            bVal = b.eventType;
                     }
                 } else if (type === 'SeenTypes') {
                     switch (col) {
@@ -283,7 +318,7 @@ function renderBeans() {
             }
         }
 
-        if (!['ScopedBeans', 'InterceptedClasses', 'Producers', 'Interceptors', 'Decorators', 'Extensions', 'RestResources', 'RestMethods', 'Observer', 'SeenTypes', 'Processed', 'RestExceptionMappers'].includes(type)) {
+        if (!['ScopedBeans', 'InterceptedClasses', 'Producers', 'Interceptors', 'Decorators', 'Extensions', 'RestResources', 'RestMethods', 'Observer', 'Events', 'SeenTypes', 'Processed', 'RestExceptionMappers'].includes(type)) {
             filteredBeans.forEach(bean => {
                 const tr = document.createElement('tr');
                 tr.textContent = bean;
@@ -310,6 +345,16 @@ function renderBeans() {
                                 <td>${highlight(bean.beanClass, filter)}</td>
                                 <td>${highlight(bean.reception, filter)}</td>
                                 <td>${highlight(bean.transactionPhase, filter)}</td>`;
+                tbody.appendChild(tr);
+            });
+        }  else if (type === 'Events') {
+            filteredBeans.forEach(bean => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                                <td>${highlight(bean.eventType, filter)}</td>
+                                <td>${highlight(bean.firedBy, filter)}</td>
+                                <td>${highlight(bean.timestamp, filter)}</td>
+                                <td>${highlight(bean.notifiedObservers, filter)}</td>`;
                 tbody.appendChild(tr);
             });
         } else if (type === 'SeenTypes') {
@@ -433,6 +478,25 @@ document.addEventListener('DOMContentLoaded', () => {
             })
             .catch(error => {
                 console.error('Error fetching observer events:', error);
+            });
+            
+    fetch('resources/dev/events')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok ' + response.statusText);
+                }
+                return response.json();
+            })
+            .then(eventsData => {
+                events = eventsData;
+                categorizeBeans();
+                const activeTab = localStorage.getItem('activeTab') || 'Processed';
+                if (activeTab === 'Events') {
+                    filterBeans();
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching events:', error);
             });
 
     fetch('resources/dev/seen-types')

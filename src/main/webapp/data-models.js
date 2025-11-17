@@ -1,11 +1,9 @@
-// Core datasets
 let beans = [];
 let observerEvents = [];
+let events = [];
 let seenTypes = [];
 let restResources = [];
 let restMethods = [];
-
-// New datasets
 let scopedBeans = [];
 let producers = [];
 let interceptors = [];
@@ -20,7 +18,7 @@ let currentSortOrder = {};
 
 // Categorized collections
 const keys = [
-  'Observer', 'Processed', 'SeenTypes', 'RestResources', 'RestMethods', 'RestExceptionMappers',
+  'Observer', 'Events', 'Processed', 'SeenTypes', 'RestResources', 'RestMethods', 'RestExceptionMappers',
   'ScopedBeans', 'Producers', 'Interceptors', 'InterceptedClasses', 'Decorators', 'Extensions'
 ];
 
