@@ -39,36 +39,53 @@
 package fish.payara.console.dev.core;
 
 import fish.payara.console.dev.rest.dto.ProducerInfo;
+import jakarta.enterprise.context.spi.CreationalContext;
 import jakarta.enterprise.event.Observes;
 import jakarta.enterprise.inject.spi.*;
 import jakarta.ws.rs.ext.ExceptionMapper;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.Set;
 
 public class DevConsoleExtension implements Extension {
 
     public static final DevConsoleRegistry registry = new DevConsoleRegistry();
 
-    <X, T> void onProcessProducerField(@Observes ProcessProducerField<X, T> ppf, BeanManager bm) {
-        ProducerInfo info = new ProducerInfo(
-                ppf.getAnnotatedProducerField(),
-                ppf.getAnnotatedProducerField().getBaseType(),
-                ProducerInfo.Kind.FIELD, bm
-        );
-        System.out.println("Captured Producer Field: " + info);
-        registry.addProducer(info);
-    }
+    <T, X> void onProcessProducer(@Observes ProcessProducer<T, X> pp, BeanManager bm) {
 
-    <X, T> void onProcessProducerMethod(@Observes ProcessProducerMethod<X, T> ppm, BeanManager bm) {
-        ProducerInfo info = new ProducerInfo(
-                ppm.getAnnotatedProducerMethod(),
-                ppm.getAnnotatedProducerMethod().getBaseType(),
-                ProducerInfo.Kind.METHOD, bm
-        );
-        System.out.println("Captured Producer Method: " + info);
-        registry.addProducer(info);
-    }
+        AnnotatedMember<T> producerMember = pp.getAnnotatedMember();
 
+        ProducerInfo info = new ProducerInfo(
+                producerMember,
+                producerMember.getBaseType(),
+                (producerMember instanceof AnnotatedField) ? ProducerInfo.Kind.FIELD : ProducerInfo.Kind.METHOD,
+                bm
+        );
+
+        registry.addProducer(info);
+
+        Producer<X> delegate = pp.getProducer();
+
+        pp.setProducer(new Producer<X>() {
+
+            @Override
+            public X produce(CreationalContext<X> ctx) {
+                info.incrementCount();
+                return delegate.produce(ctx);
+            }
+
+            @Override
+            public void dispose(X instance) {
+                delegate.dispose(instance);
+            }
+
+            @Override
+            public Set<InjectionPoint> getInjectionPoints() {
+                return delegate.getInjectionPoints();
+            }
+        });
+    }
+        
     <T> void onProcessAnnotatedType(@Observes ProcessAnnotatedType<T> pat) {
         if (pat.getAnnotatedType().isAnnotationPresent(jakarta.decorator.Decorator.class)) {
             registry.addDecorator(pat.getAnnotatedType());

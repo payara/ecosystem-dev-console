@@ -38,22 +38,16 @@
  */
 package fish.payara.console.dev.cdi.demo;
 
-import jakarta.enterprise.context.ApplicationScoped;
-import jakarta.enterprise.event.Event;
-import jakarta.inject.Inject;
 
-@ApplicationScoped
-public class CDIEventSender {
+import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
-    @Inject
-    private Event<String> messageEvent;
-    
-    
-    @Inject
-    @Fast
-    String fastMessage;      // Uses the producer method
+import jakarta.inject.Qualifier;
+import java.lang.annotation.Retention;
 
-    public void sendMessage(String message) {
-        messageEvent.fire(message + fastMessage);
-    }
-}
+/**
+ *
+ * @author Gaurav Gupta
+ */
+@Qualifier
+@Retention(RUNTIME)
+public @interface Fast { }

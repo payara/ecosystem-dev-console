@@ -56,8 +56,12 @@ public class HeartbeatTimer {
     private Event<String> messageEvent;
 
     
-    @Schedule(second = "*/1", minute = "*", hour = "*", persistent = false)
+    @Inject
+    @Fast
+    String fastMessage;  
+    
+    @Schedule(second = "*/5", minute = "*", hour = "*", persistent = false)
     public void sendMessage() {
-        messageEvent.fire("HeartBeat " + LocalTime.now());
+        messageEvent.fire("HeartBeat " + LocalTime.now() + " - "+ fastMessage);
     }
 }

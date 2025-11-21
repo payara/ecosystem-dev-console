@@ -48,12 +48,15 @@ import fish.payara.console.dev.rest.dto.EventDTO;
 import fish.payara.console.dev.rest.dto.InterceptedClassInfo;
 import fish.payara.console.dev.rest.dto.InterceptorInfo;
 import fish.payara.console.dev.rest.dto.ObserverDTO;
+import fish.payara.console.dev.rest.dto.ProducerDTO;
 import fish.payara.console.dev.rest.dto.ProducerInfo;
 import fish.payara.console.dev.rest.dto.RestMethodDTO;
 import fish.payara.console.dev.rest.dto.RestResourceDTO;
 import fish.payara.console.dev.rest.dto.ScopedBeanInfo;
 import jakarta.enterprise.inject.spi.Bean;
+import jakarta.enterprise.inject.spi.BeanManager;
 import jakarta.enterprise.inject.spi.Extension;
+import jakarta.inject.Inject;
 import jakarta.interceptor.Interceptor;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -106,11 +109,34 @@ public class DevConsoleResource {
                 .toList();
     }
 
+    @Inject
+BeanManager beanManager;
+
+private int countBeansByType(String typeName) {
+    try {
+        Class<?> clazz = Class.forName(typeName);
+        Set<Bean<?>> beans = beanManager.getBeans(clazz);
+        return beans.size();
+    } catch (ClassNotFoundException e) {
+        return 0;
+    }
+}
     @GET
     @Path("/producers")
-    public List<ProducerInfo> producers() {
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<ProducerDTO> producers() {
         guard();
-        return registry.getProducers();
+
+        return registry.getProducers().stream()
+                .map(info -> {
+//                    // Count matching beans currently available
+//                    int count = (int) registry.getBeans().stream()
+//                            .filter(b -> b.getBeanClass().getName().equals(info.getProducedType()))
+//                            .count();
+
+                    return new ProducerDTO(info);
+                })
+                .toList();
     }
 
     @GET

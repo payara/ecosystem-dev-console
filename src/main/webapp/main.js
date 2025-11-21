@@ -163,6 +163,8 @@ function renderBeans() {
                                 <td>${highlight(bean.producedType || '', filter)}</td>
                                 <td>${highlight(bean.kind || '', filter)}</td>
                                 <td>${highlight(bean.memberSignature || '', filter)}</td>
+                                <td>${highlight(bean.producedCount || '', filter)}</td>
+                                <td>${highlight(bean.lastProduced || '', filter)}</td>
                             `;
                 tbody.appendChild(tr);
             });
