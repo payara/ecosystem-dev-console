@@ -38,6 +38,7 @@
  */
 package fish.payara.console.dev.core;
 
+import fish.payara.console.dev.rest.dto.InstanceStats;
 import fish.payara.console.dev.cdi.dto.BeanGraphDTO;
 import fish.payara.console.dev.rest.dto.DecoratorInfo;
 import fish.payara.console.dev.rest.dto.EventRecord;
@@ -52,6 +53,10 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
+/**
+ *
+ * @author Gaurav Gupta
+ */
 @ApplicationScoped
 public class DevConsoleRegistry {
 
@@ -72,8 +77,46 @@ public class DevConsoleRegistry {
     private final BeanGraphDTO beanGraph = new BeanGraphDTO();
 
     // Event monitoring structures
-    private static final int DEFAULT_EVENT_HISTORY = 10000;
+    private static final int DEFAULT_EVENT_HISTORY = 1000;
     private final Deque<EventRecord> recentEvents = new ConcurrentLinkedDeque<>();
+
+    private final ConcurrentHashMap<Class<?>, InstanceStats> statsMap = new ConcurrentHashMap<>();
+
+    public void recordCreation(Class<?> beanClass) {
+        InstanceStats stats = statsMap.computeIfAbsent(beanClass, c -> new InstanceStats());
+        int live = stats.getCurrentCount().incrementAndGet();
+        stats.getCreatedCount().incrementAndGet();
+        stats.getLastCreated().set(Instant.now());
+        stats.getMaxCount().updateAndGet(prevMax -> Math.max(prevMax, live));
+    }
+
+    public void recordDestruction(Class<?> beanClass) {
+        InstanceStats stats = statsMap.get(beanClass);
+        if (stats != null) {
+            stats.getCurrentCount().decrementAndGet();
+            stats.getDestroyedCount().incrementAndGet();
+        }
+    }
+
+    public InstanceStats getStats(Class<?> beanClass) {
+        return statsMap.getOrDefault(beanClass, new InstanceStats());
+    }
+
+    public int getCurrent(Class<?> beanClass) {
+        return getStats(beanClass).getCurrentCount().get();
+    }
+
+    public int getMax(Class<?> beanClass) {
+        return getStats(beanClass).getMaxCount().get();
+    }
+
+    public int getDestroyed(Class<?> beanClass) {
+        return getStats(beanClass).getDestroyedCount().get();
+    }
+
+    public int getTotalCreated(Class<?> beanClass) {
+        return getStats(beanClass).getCreatedCount().get();
+    }
 
     public void addDecorator(AnnotatedType decorator) {
         decorators.add(DecoratorInfo.fromAnnotatedType(decorator));

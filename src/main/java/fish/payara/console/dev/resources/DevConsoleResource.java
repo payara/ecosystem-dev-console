@@ -43,6 +43,7 @@ import fish.payara.console.dev.cdi.dto.BeanGraphDTO;
 import fish.payara.console.dev.cdi.dto.SecurityAnnotationDTO;
 import fish.payara.console.dev.core.DevConsoleExtension;
 import fish.payara.console.dev.core.DevConsoleRegistry;
+import fish.payara.console.dev.rest.dto.InstanceStats;
 import fish.payara.console.dev.rest.dto.DecoratorInfo;
 import fish.payara.console.dev.rest.dto.EventDTO;
 import fish.payara.console.dev.rest.dto.InterceptedClassInfo;
@@ -53,6 +54,9 @@ import fish.payara.console.dev.rest.dto.ProducerInfo;
 import fish.payara.console.dev.rest.dto.RestMethodDTO;
 import fish.payara.console.dev.rest.dto.RestResourceDTO;
 import fish.payara.console.dev.rest.dto.ScopedBeanInfo;
+import jakarta.enterprise.context.ContextNotActiveException;
+import jakarta.enterprise.context.spi.Context;
+import jakarta.enterprise.context.spi.Contextual;
 import jakarta.enterprise.inject.spi.Bean;
 import jakarta.enterprise.inject.spi.BeanManager;
 import jakarta.enterprise.inject.spi.Extension;
@@ -64,6 +68,7 @@ import jakarta.ws.rs.core.Response;
 import java.lang.annotation.Annotation;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -73,8 +78,11 @@ import java.util.stream.Collectors;
 @Produces(MediaType.APPLICATION_JSON)
 public class DevConsoleResource {
 
-    DevConsoleRegistry registry = DevConsoleExtension.registry;
+    private DevConsoleRegistry registry = DevConsoleExtension.registry;
 
+    @Inject
+    private BeanManager beanManager;
+    
     @GET
     @Path("/beans")
     public Object beans() {
@@ -87,40 +95,108 @@ public class DevConsoleResource {
     public List<ScopedBeanInfo> scopedBeans() {
         guard();
 
-        Set<String> seenKeys = new HashSet<>();
         return registry.getBeans().stream()
-                .filter(bean -> {
-                    var scope = bean.getScope();
-                    return scope != null && (scope.equals(jakarta.inject.Singleton.class)
-                            || scope.isAnnotationPresent(jakarta.enterprise.context.NormalScope.class));
-                })
-                .map(bean -> new ScopedBeanInfo(bean, registry.findProducerForBean(bean.getBeanClass())
-                .map(ProducerInfo::getMemberSignature)
-                .orElse(null)))
-                .filter(beanInfo -> {
-                    String key = beanInfo.getBeanClass() + "#" + beanInfo.getScope() + "#" + beanInfo.getName();
-                    if (seenKeys.contains(key)) {
-                        return false; // skip duplicate
-                    } else {
-                        seenKeys.add(key);
-                        return true;
-                    }
+                .map(bean -> {
+
+                    var info = new ScopedBeanInfo(bean,
+                            registry.findProducerForBean(bean.getBeanClass())
+                                    .map(ProducerInfo::getMemberSignature)
+                                    .orElse(null));
+
+                    InstanceStats stats
+                            = registry.getStats(bean.getBeanClass());
+
+                    info.setCreatedCount(stats.getCreatedCount().get());
+                    info.setLastCreated(stats.getLastCreated().get());
+                    info.setCurrentCount(stats.getCurrentCount().get());
+                    info.setMaxCount(stats.getMaxCount().get());
+                    info.setDestroyedCount(stats.getDestroyedCount().get());
+
+                    return info;
                 })
                 .toList();
     }
 
-    @Inject
-BeanManager beanManager;
+    @GET
+    @Path("/scoped-beans-detail")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response scopedBeansDetailed() {
+        guard();
 
-private int countBeansByType(String typeName) {
-    try {
-        Class<?> clazz = Class.forName(typeName);
-        Set<Bean<?>> beans = beanManager.getBeans(clazz);
-        return beans.size();
-    } catch (ClassNotFoundException e) {
-        return 0;
+        // Group beans by declared scope (treat null as Dependent)
+        Map<Class<? extends Annotation>, List<Bean<?>>> beansByScope = registry.getBeans().stream()
+                .collect(Collectors.groupingBy(b -> {
+                    Class<? extends Annotation> sc = b.getScope();
+                    return sc != null ? sc : jakarta.enterprise.context.Dependent.class;
+                }));
+
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        for (Map.Entry<Class<? extends Annotation>, List<Bean<?>>> e : beansByScope.entrySet()) {
+            Class<? extends Annotation> scopeClass = e.getKey();
+
+            // Skip Dependent scope if you don't want to report it (change as desired)
+            if (scopeClass == jakarta.enterprise.context.Dependent.class) {
+                continue;
+            }
+
+            String scopeKey = "@" + scopeClass.getSimpleName(); // e.g. @RequestScoped
+            List<Bean<?>> beanList = e.getValue();
+
+            int beanCount = beanList.size();
+
+            Integer scopeInstancesSum = 0; // null if context not active
+
+            Context context = null;
+            boolean contextActive = true;
+            try {
+                // Try to obtain the context for this scope; may throw ContextNotActiveException
+                context = beanManager.getContext(scopeClass);
+            } catch (ContextNotActiveException ex) {
+                contextActive = false;
+            } catch (Throwable ex) {
+                // Some implementations may throw different exceptions; treat as not active
+                contextActive = false;
+            }
+
+            if (!contextActive) {
+                // context is not active during this request -> set instances to null
+                scopeInstancesSum = null;
+            } else {
+                // context active: check contextual instance presence for each bean
+                for (Bean<?> bean : beanList) {
+                    Integer instancesForBean = 0;
+                    try {
+                        @SuppressWarnings("unchecked")
+                        Contextual<Object> contextual = (Contextual<Object>) bean;
+                        Object instance = context.get(contextual);
+                        if (instance != null) {
+                            instancesForBean = 1; // CDI context stores single contextual instance per bean
+                        } else {
+                            instancesForBean = 0;
+                        }
+                    } catch (Throwable t) {
+                        // defensive: if anything goes wrong, mark as unknown (null)
+                        instancesForBean = null;
+                    }
+
+
+                    if (instancesForBean != null && instancesForBean > 0) {
+                        scopeInstancesSum = scopeInstancesSum + instancesForBean;
+                    }
+                }
+            }
+
+            Map<String, Object> scopeSummary = new LinkedHashMap<>();
+            scopeSummary.put("beanCount", beanCount);
+            scopeSummary.put("instances", scopeInstancesSum);
+
+            result.put(scopeKey, scopeSummary);
+        }
+
+        return Response.ok(result).build();
     }
-}
+
     @GET
     @Path("/producers")
     @Produces(MediaType.APPLICATION_JSON)
@@ -129,11 +205,6 @@ private int countBeansByType(String typeName) {
 
         return registry.getProducers().stream()
                 .map(info -> {
-//                    // Count matching beans currently available
-//                    int count = (int) registry.getBeans().stream()
-//                            .filter(b -> b.getBeanClass().getName().equals(info.getProducedType()))
-//                            .count();
-
                     return new ProducerDTO(info);
                 })
                 .toList();

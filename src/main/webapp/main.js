@@ -132,6 +132,11 @@ function renderBeans() {
                 const types = Array.isArray(bean.types) ? bean.types.join(', ') : '';
                 tr.innerHTML = `
                                 <td>${highlight(bean.scope ? bean.scope.substring(bean.scope.lastIndexOf('.') + 1) : '', filter)}</td>
+                                <td>${highlight(bean.currentCount || '', filter)}</td>
+                                <td>${highlight(bean.createdCount || '', filter)}</td>
+                                <td>${highlight(bean.lastCreated || '', filter)}</td>
+                                <td>${highlight(bean.maxCount || '', filter)}</td>
+                                <td>${highlight(bean.destroyedCount || '', filter)}</td>
                                 <td>${highlight(bean.beanClass || '', filter)}</td>
                                 <td>${highlight(types, filter)}</td>
                                 <td>${highlight(bean.name || '', filter)}</td>

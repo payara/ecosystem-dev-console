@@ -47,6 +47,10 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Set;
 
+/**
+ *
+ * @author Gaurav Gupta
+ */
 public class DevConsoleExtension implements Extension {
 
     public static final DevConsoleRegistry registry = new DevConsoleRegistry();
@@ -85,7 +89,7 @@ public class DevConsoleExtension implements Extension {
             }
         });
     }
-        
+
     <T> void onProcessAnnotatedType(@Observes ProcessAnnotatedType<T> pat) {
         if (pat.getAnnotatedType().isAnnotationPresent(jakarta.decorator.Decorator.class)) {
             registry.addDecorator(pat.getAnnotatedType());
@@ -215,8 +219,12 @@ public class DevConsoleExtension implements Extension {
         if (!registry.enabled()) {
             return;
         }
-        InjectionTarget<T> delegate = pit.getInjectionTarget();
-        pit.setInjectionTarget(new WrappingInjectionTarget<>(delegate, registry));
+
+        Class<T> beanClass = pit.getAnnotatedType().getJavaClass();  // ✔ legal here
+
+        InjectionTarget<T> original = pit.getInjectionTarget();
+
+        pit.setInjectionTarget(new WrappingInjectionTarget<>(beanClass, original, registry));
     }
 
     void afterBeanDiscovery(@Observes AfterBeanDiscovery abd, BeanManager bm) {
