@@ -38,6 +38,7 @@
  */
 package fish.payara.console.dev.core;
 
+import fish.payara.console.dev.rest.dto.Record;
 import fish.payara.console.dev.rest.dto.InstanceStats;
 import fish.payara.console.dev.cdi.dto.BeanGraphDTO;
 import fish.payara.console.dev.rest.dto.DecoratorInfo;
@@ -82,19 +83,21 @@ public class DevConsoleRegistry {
 
     private final ConcurrentHashMap<Class<?>, InstanceStats> statsMap = new ConcurrentHashMap<>();
 
-    public void recordCreation(Class<?> beanClass) {
+    public void recordCreation(Class<?> beanClass, long ms) {
         InstanceStats stats = statsMap.computeIfAbsent(beanClass, c -> new InstanceStats());
         int live = stats.getCurrentCount().incrementAndGet();
         stats.getCreatedCount().incrementAndGet();
         stats.getLastCreated().set(Instant.now());
         stats.getMaxCount().updateAndGet(prevMax -> Math.max(prevMax, live));
+        stats.getCreationRecords().add(new Record(Instant.now(), ms));
     }
 
-    public void recordDestruction(Class<?> beanClass) {
+    public void recordDestruction(Class<?> beanClass, long ms) {
         InstanceStats stats = statsMap.get(beanClass);
         if (stats != null) {
             stats.getCurrentCount().decrementAndGet();
             stats.getDestroyedCount().incrementAndGet();
+            stats.getDestructionRecords().add(new Record(Instant.now(), ms));
         }
     }
 

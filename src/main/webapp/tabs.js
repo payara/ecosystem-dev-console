@@ -1,11 +1,17 @@
 function openPane(evt, tabName) {
     const iframe = document.getElementById('dashboardIframe');
     const contentArea = document.getElementById('contentArea');
-
+ const iframeSources = {
+        CDIDevConsole: "cdi-dashboard.html",
+        MetricsDashboard: "metrics-dashboard.html"
+    };
     // Show the dashboard iframe only when requested, otherwise hide it
-    if (tabName === 'CDIDevConsole') {
+    if (tabName === 'CDIDevConsole' || tabName === 'MetricsDashboard') {
         iframe.style.display = 'block';
         contentArea.style.display ='none';
+         if (iframe.src !== iframeSources[tabName]) {
+            iframe.src = iframeSources[tabName];
+        }
     } else {
         iframe.style.display = 'none';
         contentArea.style.display ='block';

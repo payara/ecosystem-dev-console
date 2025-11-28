@@ -39,50 +39,25 @@
 package fish.payara.console.dev.rest.dto;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  *
  * @author Gaurav Gupta
  */
-public class InstanceStats {
+public class Record {
+    private final Instant timestamp;
+    private final long durationMs;
 
-    private final AtomicInteger currentCount = new AtomicInteger();
-    private final AtomicInteger createdCount = new AtomicInteger();
-    private final AtomicInteger maxCount = new AtomicInteger();
-    private final AtomicInteger destroyedCount = new AtomicInteger();
-    private final AtomicReference<Instant> lastCreated = new AtomicReference<>(null);
-    private final List<Record> creationRecords = new CopyOnWriteArrayList<>();
-    private final List<Record> destructionRecords = new CopyOnWriteArrayList<>();
-
-    public AtomicInteger getCurrentCount() {
-        return currentCount;
+    public Record(Instant timestamp, long durationMs) {
+        this.timestamp = timestamp;
+        this.durationMs = durationMs;
     }
 
-    public AtomicInteger getMaxCount() {
-        return maxCount;
+    public Instant getTimestamp() {
+        return timestamp;
     }
 
-    public AtomicInteger getDestroyedCount() {
-        return destroyedCount;
-    }
-
-    public AtomicInteger getCreatedCount() {
-        return createdCount;
-    }
-
-    public AtomicReference<Instant> getLastCreated() {
-        return lastCreated;
-    }
-
-    public List<Record> getCreationRecords() {
-        return creationRecords;
-    }
-
-    public List<Record> getDestructionRecords() {
-        return destructionRecords;
+    public long getDurationMs() {
+        return durationMs;
     }
 }

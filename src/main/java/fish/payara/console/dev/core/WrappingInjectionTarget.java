@@ -52,6 +52,7 @@ public class WrappingInjectionTarget<T> implements InjectionTarget<T> {
     private final InjectionTarget<T> delegate;
     private final DevConsoleRegistry registry;
     private final Class<T> beanClass;
+    private static final ThreadLocal<Long> creationStart = new ThreadLocal<>();
 
     WrappingInjectionTarget(Class<T> beanClass,
             InjectionTarget<T> delegate,
@@ -63,11 +64,10 @@ public class WrappingInjectionTarget<T> implements InjectionTarget<T> {
 
     @Override
     public T produce(CreationalContext<T> ctx) {
-        T instance = delegate.produce(ctx);
-
         if (registry.enabled()) {
-            registry.recordCreation(beanClass);
+            creationStart.set(System.nanoTime());
         }
+        T instance = delegate.produce(ctx);
         return instance;
     }
 
@@ -79,14 +79,27 @@ public class WrappingInjectionTarget<T> implements InjectionTarget<T> {
     @Override
     public void postConstruct(T instance) {
         delegate.postConstruct(instance);
+
+        Long start = creationStart.get();
+        if (start != null) {
+            long end = System.nanoTime();
+            long ms = (end - start) / 1_000_000;
+            registry.recordCreation(beanClass, ms);
+            creationStart.remove();
+        }
     }
 
     @Override
-      public void preDestroy(T instance) {
+    public void preDestroy(T instance) {
+        Long start = System.nanoTime();
         delegate.preDestroy(instance);
-        registry.recordDestruction(beanClass);
+        if (registry.enabled()) {
+            long end = System.nanoTime();
+            long ms = (end - start) / 1_000_000;
+            registry.recordDestruction(beanClass, ms);
+        }
     }
-      
+
     @Override
     public void dispose(T instance) {
         delegate.dispose(instance);

@@ -102,12 +102,12 @@ function renderBeans() {
         let filteredBeans = [];
 
         if (type === 'RestExceptionMappers') {
-            debugger;
             filteredBeans = categorized.RestExceptionMappers.filter(mapping => {
                 const m = parseRestExceptionMapper(mapping);
                 return m.mapperClass.toLowerCase().includes(filter) || (m.exceptionType && m.exceptionType.toLowerCase().includes(filter));
             });
         } else if (type === 'Processed') {
+            debugger;
             filteredBeans = categorized[type].filter(bean => bean.toLowerCase().includes(filter));
         } else if (type === 'SeenTypes') {
             filteredBeans = categorized.SeenTypes.filter(bean => {
@@ -212,7 +212,6 @@ function renderBeans() {
                 tbody.appendChild(tr);
             });
         } else if (type === 'Events') {
-            debugger;
             filteredBeans = events.filter(event => {
                 return event.eventType.toLowerCase().includes(filter) ||
                         event.firedBy.toLowerCase().includes(filter) ||
