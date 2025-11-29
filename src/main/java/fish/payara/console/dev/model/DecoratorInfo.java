@@ -49,9 +49,8 @@ import java.util.stream.Collectors;
 /**
  * A simple DTO to hold metadata about a CDI Decorator.
  */
-public class DecoratorInfo {
+public class DecoratorInfo extends BeanInfo {
 
-    private final String className;
     private final Set<String> decoratedTypes;
     private final String delegateType;
     private final Set<String> delegateQualifiers;
@@ -64,16 +63,12 @@ public class DecoratorInfo {
                          Set<String> delegateQualifiers,
                          Set<String> classQualifiers,
                          String scope) {
-        this.className = className;
+        super(className);
         this.decoratedTypes = decoratedTypes;
         this.delegateType = delegateType;
         this.delegateQualifiers = delegateQualifiers;
         this.classQualifiers = classQualifiers;
         this.scope = scope;
-    }
-
-    public String getClassName() {
-        return className;
     }
 
     public Set<String> getDecoratedTypes() {

@@ -24,9 +24,8 @@
                 color:#0f1724
             }
             .wrap{
-                max-width:1100px;
                 margin:18px auto;
-                padding:16px
+                padding:12px
             }
             .top{
                 display:flex;
@@ -197,7 +196,7 @@
                 <div>
                     <h1 id="beanTitle">Bean: —</h1>
                     <div id="beanScope" class="muted small"></div>
-                    <div id="beanClass" class="muted small" style="margin-top:4px"></div>
+                    <div id="className" class="muted small" style="margin-top:4px"></div>
                 </div>
                 <div class="meta">
                     <div class="muted small">Current</div>
@@ -487,7 +486,7 @@
                     const data = await loadBean(beanName);
 
                     document.getElementById('beanScope').textContent = (data.scope ? data.scope : 'Unknown scope');
-                    document.getElementById('beanClass').textContent = (data.beanClass ? data.beanClass : '');
+                    document.getElementById('className').textContent = (data.className ? data.className : '');
                     document.getElementById('currentCount').textContent = data.currentCount != null ? data.currentCount : '—';
                     document.getElementById('summaryCounts').textContent = `max=${data.maxCount || 0}  created=${data.createdCount || 0}  destroyed=${data.destroyedCount || 0}`;
 

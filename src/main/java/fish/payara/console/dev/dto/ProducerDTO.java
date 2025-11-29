@@ -48,7 +48,7 @@ import java.time.Instant;
 
 public class ProducerDTO {
 
-    private final String producerClass;    
+    private final String className;    
     private final String memberSignature;
     private final String producedType;
     private final String kind; // FIELD or METHOD
@@ -57,7 +57,7 @@ public class ProducerDTO {
 
 
     public ProducerDTO(ProducerInfo info) {
-        this.producerClass = info.getProducerClass();
+        this.className = info.getClassName();
         this.memberSignature = info.getMemberSignature();
         this.producedType = info.getProducedType();
         this.kind = info.getKind().name();
@@ -66,7 +66,7 @@ public class ProducerDTO {
     }
 
     // getters
-    public String getProducerClass() { return producerClass; }
+    public String getClassName() { return className; }
     public String getMemberSignature() { return memberSignature; }
     public String getProducedType() { return producedType; }
     public String getKind() { return kind; }

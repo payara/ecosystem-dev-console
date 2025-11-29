@@ -36,29 +36,32 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package fish.payara.console.dev.model;
+package fish.payara.console.dev.rest;
 
+
+import fish.payara.console.dev.model.HTTPRecord;
+import jakarta.enterprise.context.ApplicationScoped;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.time.Instant;
 
 /**
  *
  * @author Gaurav Gupta
  */
-public class Record {
+@ApplicationScoped
+public class RestMetricsRegistry {
 
-    protected final Instant timestamp;
-    protected final long durationMs;
+    private final Map<String, List<HTTPRecord>> metrics = new ConcurrentHashMap<>();
 
-    public Record(Instant timestamp, long durationMs) {
-        this.timestamp = timestamp;
-        this.durationMs = durationMs;
+    public void addRecord(String endpoint, long durationMs, int status, int requestSize, int responseSize) {
+        metrics.computeIfAbsent(endpoint, k -> new CopyOnWriteArrayList<>())
+                .add(new HTTPRecord(Instant.now(), durationMs, status, requestSize, responseSize));
     }
 
-    public Instant getTimestamp() {
-        return timestamp;
-    }
-
-    public long getDurationMs() {
-        return durationMs;
+    public Map<String, List<HTTPRecord>> getMetrics() {
+        return metrics;
     }
 }

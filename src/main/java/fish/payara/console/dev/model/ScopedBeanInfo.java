@@ -48,9 +48,8 @@ import java.util.stream.Collectors;
  *
  * @author Gaurav Gupta
  */
-public class ScopedBeanInfo {
+public class ScopedBeanInfo extends BeanInfo {
 
-    private final String beanClass;
     private final String scope;
     private final Set<String> qualifiers;
     private final Set<String> types;
@@ -66,7 +65,7 @@ public class ScopedBeanInfo {
     private int destroyedCount;
 
     public ScopedBeanInfo(Bean<?> bean, String producedBy) {
-        this.beanClass = bean.getBeanClass().getName();
+        super(bean.getBeanClass().getName());
 
         Class<?> scopeAnnotation = bean.getScope();
         this.scope = (scopeAnnotation != null) ? scopeAnnotation.getSimpleName() : "Unknown";
@@ -96,10 +95,6 @@ public class ScopedBeanInfo {
             return "@" + a.annotationType().getSimpleName();
         }
         return "@" + a.annotationType().getSimpleName() + a.toString();
-    }
-
-    public String getBeanClass() {
-        return beanClass;
     }
 
     public String getScope() {
@@ -172,6 +167,6 @@ public class ScopedBeanInfo {
 
     @Override
     public String toString() {
-        return beanClass + " @" + scope + " qualifiers=" + qualifiers;
+        return className + " @" + scope + " qualifiers=" + qualifiers;
     }
 }

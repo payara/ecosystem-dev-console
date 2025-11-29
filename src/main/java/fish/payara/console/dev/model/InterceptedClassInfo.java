@@ -46,13 +46,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class InterceptedClassInfo {
+public class InterceptedClassInfo extends BeanInfo {
 
-    private final String className;
     private final Set<String> interceptorBindings;
 
     public InterceptedClassInfo(Bean<?> bean) {
-        this.className = bean.getBeanClass().getName();
+        super(bean.getBeanClass().getName());
 
         this.interceptorBindings = findInterceptorBindings(bean.getBeanClass())
                 .map(InterceptedClassInfo::formatAnnotation)
@@ -65,31 +64,26 @@ public class InterceptedClassInfo {
                 .filter(a -> a.annotationType().isAnnotationPresent(InterceptorBinding.class));
     }
 
-    
     private static String formatAnnotation(Annotation a) {
-    var type = a.annotationType();
-    if (type.getDeclaredMethods().length == 0) {
-        // marker binding
-        return "@" + type.getSimpleName();
-    }
+        var type = a.annotationType();
+        if (type.getDeclaredMethods().length == 0) {
+            // marker binding
+            return "@" + type.getSimpleName();
+        }
 
-    // show short annotation with its values
-    String values = Stream.of(type.getDeclaredMethods())
-            .map(m -> {
-                try {
-                    Object val = m.invoke(a);
-                    return m.getName() + "=" + String.valueOf(val);
-                } catch (Exception e) {
-                    return m.getName() + "=<error>";
-                }
-            })
-            .collect(Collectors.joining(", "));
+        // show short annotation with its values
+        String values = Stream.of(type.getDeclaredMethods())
+                .map(m -> {
+                    try {
+                        Object val = m.invoke(a);
+                        return m.getName() + "=" + String.valueOf(val);
+                    } catch (Exception e) {
+                        return m.getName() + "=<error>";
+                    }
+                })
+                .collect(Collectors.joining(", "));
 
-    return "@" + type.getSimpleName() + "(" + values + ")";
-}
-
-    public String getClassName() {
-        return className;
+        return "@" + type.getSimpleName() + "(" + values + ")";
     }
 
     public Set<String> getInterceptorBindings() {

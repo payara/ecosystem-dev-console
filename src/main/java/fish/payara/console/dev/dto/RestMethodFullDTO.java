@@ -36,29 +36,27 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package fish.payara.console.dev.model;
+package fish.payara.console.dev.dto;
 
-import java.time.Instant;
+import fish.payara.console.dev.model.HTTPRecord;
+import java.util.ArrayList;
+import java.util.List;
 
-/**
- *
- * @author Gaurav Gupta
- */
-public class Record {
+public class RestMethodFullDTO extends RestMethodDTO {
 
-    protected final Instant timestamp;
-    protected final long durationMs;
+    private List<HTTPRecord> records = new ArrayList<>();
 
-    public Record(Instant timestamp, long durationMs) {
-        this.timestamp = timestamp;
-        this.durationMs = durationMs;
+    public RestMethodFullDTO(String methodSignature, String path, String httpMethodAndProduces) {
+        super(methodSignature, path, httpMethodAndProduces);
     }
 
-    public Instant getTimestamp() {
-        return timestamp;
+    public List<HTTPRecord> getRecords() {
+        return records;
     }
 
-    public long getDurationMs() {
-        return durationMs;
+    public void setRecords(List<HTTPRecord> records) {
+        this.records = records;
+        setInvoked(records.size());
     }
+
 }

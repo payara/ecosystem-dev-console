@@ -38,27 +38,20 @@
  */
 package fish.payara.console.dev.model;
 
-import java.time.Instant;
-
 /**
  *
  * @author Gaurav Gupta
  */
-public class Record {
+public abstract class BeanInfo {
+    
+    protected final String className;
 
-    protected final Instant timestamp;
-    protected final long durationMs;
-
-    public Record(Instant timestamp, long durationMs) {
-        this.timestamp = timestamp;
-        this.durationMs = durationMs;
+    public BeanInfo(String className) {
+        this.className = className;
     }
 
-    public Instant getTimestamp() {
-        return timestamp;
+    public String getClassName() {
+        return className;
     }
 
-    public long getDurationMs() {
-        return durationMs;
-    }
 }

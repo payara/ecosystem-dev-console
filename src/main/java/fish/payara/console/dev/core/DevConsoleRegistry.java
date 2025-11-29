@@ -221,15 +221,11 @@ public class DevConsoleRegistry {
 
     public <T> void addRestMethodPathWithProduces(jakarta.enterprise.inject.spi.AnnotatedMethod<? super T> am, String path, String produces, String httpMethod) {
         if (am != null) {
-            RestMethodDTO restMethodDTO = new RestMethodDTO();
-            restMethodDTO.setPath(path);
             String httpMethodAndProduces = (httpMethod != null ? httpMethod : "") + (produces != null ? " (produces: " + produces + ")" : "");
-            restMethodDTO.setHttpMethodAndProduces(httpMethodAndProduces);
             String methodName = am.getJavaMember().getName();
-
             String declaringClass = am.getDeclaringType().getJavaClass().getName();
             String methodId = declaringClass + "#" + methodName;
-            restMethodDTO.setMethodSignature(methodId);
+            RestMethodDTO restMethodDTO = new RestMethodDTO(methodId, path, httpMethodAndProduces);
             restMethodInfoMap.put(am, restMethodDTO);
             beanGraph.addNode(methodId, methodName + " " + httpMethodAndProduces, "REST Method");
         }

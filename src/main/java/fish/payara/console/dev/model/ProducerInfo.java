@@ -46,14 +46,13 @@ import java.time.Instant;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class ProducerInfo {
+public class ProducerInfo extends BeanInfo {
 
     public enum Kind {
         FIELD,
         METHOD
     }
 
-    private final String producerClass;     // class where @Producer is declared
     private final String memberSignature;   // field or method signature without class name
     private final String producedType;      // type as String
     private final Kind kind;                // FIELD or METHOD
@@ -61,8 +60,8 @@ public class ProducerInfo {
     private final AtomicReference<Instant> lastProduced = new AtomicReference<>(null);
 
     public ProducerInfo(AnnotatedMember<?> member, Type producedType, Kind kind, BeanManager bm) {
+        super(member.getJavaMember().getDeclaringClass().getName());
         Member javaMember = member.getJavaMember();
-        this.producerClass = javaMember.getDeclaringClass().getName();
         this.producedType = producedType.getTypeName(); // store as String for JSON
 
         // Remove class name prefix from member signature
@@ -152,10 +151,6 @@ public class ProducerInfo {
         return (idx == -1) ? fqcn : fqcn.substring(idx + 1);
     }
 
-    public String getProducerClass() {
-        return producerClass;
-    }
-
     public String getMemberSignature() {
         return memberSignature;
     }
@@ -171,7 +166,7 @@ public class ProducerInfo {
     @Override
     public String toString() {
         return "ProducerInfo{" +
-                "producerClass='" + producerClass + '\'' +
+                "className='" + className + '\'' +
                 ", memberSignature='" + memberSignature + '\'' +
                 ", producedType='" + producedType + '\'' +
                 ", kind=" + kind +

@@ -44,21 +44,29 @@ import java.time.Instant;
  *
  * @author Gaurav Gupta
  */
-public class Record {
+public class HTTPRecord extends Record {
 
-    protected final Instant timestamp;
-    protected final long durationMs;
+    private final int status;          // HTTP response code
+    private final int requestSize;     // bytes
+    private final int responseSize;    // bytes
 
-    public Record(Instant timestamp, long durationMs) {
-        this.timestamp = timestamp;
-        this.durationMs = durationMs;
+    public HTTPRecord(Instant timestamp, long durationMs, int status, int requestSize, int responseSize) {
+        super(timestamp, durationMs);
+        this.status = status;
+        this.requestSize = requestSize;
+        this.responseSize = responseSize;
     }
 
-    public Instant getTimestamp() {
-        return timestamp;
+    public int getStatus() {
+        return status;
     }
 
-    public long getDurationMs() {
-        return durationMs;
+    public int getRequestSize() {
+        return requestSize;
     }
+
+    public int getResponseSize() {
+        return responseSize;
+    }
+
 }

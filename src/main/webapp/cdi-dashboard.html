@@ -16,7 +16,6 @@
                 color: #1f2937;
             }
             .page {
-                max-width: 1200px;
                 margin: 18px auto;
                 padding: 12px;
             }
@@ -379,7 +378,7 @@ function renderScopeHeatmap(beans) {
                 const clones = beans.slice().filter(b => b.maxCount && b.maxCount > 0);
                 clones.sort((a, b) => (b.maxCount || 0) - (a.maxCount || 0));
                 const top = clones.slice(0, topN);
-                const labels = top.map(b => shortenClassName(b.beanClass));
+                const labels = top.map(b => shortenClassName(b.className));
                 const data = top.map(b => b.maxCount || 0);
                 const ctx = document.getElementById("topMax").getContext("2d");
                 if (window._topMax)
@@ -387,7 +386,7 @@ function renderScopeHeatmap(beans) {
                 window._topMax = new Chart(ctx, {
                     type: "bar",
                     data: {labels, datasets: [{label: "maxCount", data, backgroundColor: data.map((_, i) => `rgba(99,102,241,${0.95 - i * 0.06})`)}]},
-                    options: {indexAxis: 'y', responsive: true, plugins: {legend: {display: false}, tooltip: {callbacks: {title: (items) => top[items[0].dataIndex].beanClass}}}, scales: {x: {beginAtZero: true}}}
+                    options: {indexAxis: 'y', responsive: true, plugins: {legend: {display: false}, tooltip: {callbacks: {title: (items) => top[items[0].dataIndex].className}}}, scales: {x: {beginAtZero: true}}}
                 });
             }
 

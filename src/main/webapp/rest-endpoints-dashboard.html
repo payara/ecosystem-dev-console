@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>REST Endpoints Dashboard — CDI Dev Mode</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root { --bg:#0f1724; --card:#fff; --muted:#6b7280 }
+    body {
+      margin:0; font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,
+      Helvetica,Arial;background:#f8fafc;color:#0f1724
+    }
+    .page { max-width:1200px;margin:18px auto;padding:12px }
+    h1 { margin:0 0 8px;font-size:1.25rem }
+    .controls { display:flex;gap:8px;align-items:center;margin-bottom:12px }
+    .grid { display:grid;gap:14px;grid-template-columns:1fr }
+    @media(min-width:980px){
+      .grid { grid-template-columns:1fr 1fr }
+    }
+    .card {
+      background:var(--card);padding:12px;border-radius:10px;
+      box-shadow:0 6px 18px rgba(2,6,23,0.06)
+    }
+    .card.full-width {
+      grid-column:1 / -1;
+    }
+    .row { display:flex;gap:12px;align-items:center }
+    .cards-row {
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+      gap:12px;margin:12px 0
+    }
+    .stat {
+      padding:12px;border-radius:8px;color:#fff;min-height:70px;
+      display:flex;flex-direction:column;justify-content:center
+    }
+    .stat .label { font-weight:700 }
+    .stat .value { font-size:1.4rem;font-weight:800 }
+    .muted { color:var(--muted) }
+
+    .table { width:100%;border-collapse:collapse;margin-top:8px }
+    .table th,.table td {
+      padding:8px;border-bottom:1px solid #eee;text-align:left;font-size:.95rem
+    }
+    input[type=search], select {
+      padding:8px;border-radius:8px;border:1px solid #e5e7eb
+    }
+    .small { font-size:.85rem;color:var(--muted) }
+
+    /* NEW — scrollable table container */
+    .endpoints-wrapper {
+      max-height:380px;
+      overflow-y:auto;
+      overflow-x:auto;
+      border:1px solid #eee;
+      border-radius:8px;
+      padding:4px;
+      background:#fff;
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <h1>REST Endpoints</h1>
+
+    <div class="controls">
+      <div style="margin-left:auto" class="row">
+        <input id="q" type="search" placeholder="Filter by path or method or class" />
+        <select id="verbFilter"><option value="">All HTTP methods</option></select>
+        <button id="refresh">Refresh</button>
+      </div>
+    </div>
+
+    <div class="cards-row" id="summaryCards"></div>
+
+    <div class="grid">
+
+      <div class="card">
+        <div class="small">Invocations by Path (top 20)</div>
+        <canvas id="invokedByPath" height="220"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="small">HTTP Methods Distribution</div>
+        <canvas id="methodPie" height="220"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="small">Top Invoked Methods</div>
+        <canvas id="topInvoked" height="320"></canvas>
+      </div>
+
+      <div class="card">
+        <div class="small">Produces / Content-type (parsed)</div>
+        <canvas id="producesPie" height="220"></canvas>
+      </div>
+
+      <!-- FULL WIDTH CARD -->
+      <div class="card full-width">
+        <div class="small">All Endpoints (searchable)</div>
+
+        <div class="endpoints-wrapper">
+          <table class="table" id="endpointsTable">
+            <thead>
+              <tr>
+                <th>Verb</th>
+                <th>Path</th>
+                <th>Invoked</th>
+                <th>Method</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+  function shortenClassName(full){
+    if(!full) return '';
+    const s = full.replace(/^class\s+|^interface\s+/, '');
+    const parts = s.split('.');
+    return parts.length > 2 ? parts.slice(-2).join('.') : s;
+  }
+
+  function parseVerbAndProduces(raw){
+    if(!raw) return {verb:'',produces:''};
+    const m = raw.match(/^([^\(]+)\s*(?:\(produces:\s*([^\)]+)\))?/i);
+    if(!m) return {verb:raw.trim(),produces:''};
+    return {verb:m[1].trim(),produces:(m[2]||'').trim()};
+  }
+
+  async function fetchAndRender(){
+    try{
+      const res = await fetch("resources/dev/rest-methods");
+      const data = await res.json();
+      window._restMethodsRaw = data;
+      renderAll(data);
+    }catch(e){ console.error(e); }
+  }
+
+  function renderAll(items){
+    const q = document.getElementById('q').value.toLowerCase().trim();
+    const verbFilter = document.getElementById('verbFilter').value;
+
+    const enriched = items.map(it=>{
+      const parsed = parseVerbAndProduces(it.httpMethodAndProduces);
+      return {...it, verb:parsed.verb, produces:parsed.produces};
+    });
+
+    const filtered = enriched.filter(it=>{
+      if(verbFilter && it.verb !== verbFilter) return false;
+      if(!q) return true;
+      return (it.path||'').toLowerCase().includes(q) ||
+             (it.verb||'').toLowerCase().includes(q) ||
+             (it.methodSignature||'').toLowerCase().includes(q);
+    });
+
+    renderSummary(enriched);
+    renderInvokedByPath(filtered);
+    renderMethodPie(enriched);
+    renderTopInvoked(enriched);
+    renderProducesPie(enriched);
+    renderTable(filtered);
+    populateVerbFilter(enriched);
+  }
+
+  function renderSummary(items){
+    const total = items.length;
+    const totalInvoked = items.reduce((s,i)=>s+(i.invoked||0),0);
+    const uniqueProduces = new Set(items.map(i=>i.produces).filter(Boolean));
+
+    const cards = [
+      {label:'Endpoints', value:total},
+      {label:'Total Invocations', value:totalInvoked},
+      {label:'Distinct Produces', value:uniqueProduces.size}
+    ];
+
+    const container = document.getElementById('summaryCards');
+    container.innerHTML = '';
+
+    const colors = [
+      'linear-gradient(135deg,#6a11cb,#2575fc)',
+      'linear-gradient(135deg,#06b6d4,#3b82f6)',
+      'linear-gradient(135deg,#34d399,#10b981)'
+    ];
+
+    cards.forEach((c,i)=>{
+      const div = document.createElement('div');
+      div.className = 'stat';
+      div.style.background = colors[i % colors.length];
+      div.innerHTML = `<div class="label">${c.label}</div><div class="value">${c.value}</div>`;
+      container.appendChild(div);
+    });
+  }
+
+  function renderInvokedByPath(items){
+    const top = items.slice().sort((a,b)=>(b.invoked||0)-(a.invoked||0)).slice(0,20);
+    const labels = top.map(i=>i.path||i.methodSignature);
+    const data = top.map(i=>i.invoked||0);
+    const ctx = document.getElementById('invokedByPath').getContext('2d');
+    if(window._invokedByPath) window._invokedByPath.destroy();
+    window._invokedByPath = new Chart(ctx,{
+      type:'bar',
+      data:{labels,datasets:[{label:'Invoked',data}]},
+      options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+    });
+  }
+
+  function renderMethodPie(items){
+    const counts = {};
+    items.forEach(i=>counts[i.verb]=(counts[i.verb]||0)+1);
+    const labels = Object.keys(counts);
+    const data = Object.values(counts);
+    const ctx = document.getElementById('methodPie').getContext('2d');
+    if(window._methodPie) window._methodPie.destroy();
+    window._methodPie = new Chart(ctx,{
+      type:'pie',
+      data:{labels,datasets:[{data}]},
+      options:{responsive:true,plugins:{legend:{position:'right'}}}
+    });
+  }
+
+  function renderTopInvoked(items){
+    const top = items.slice().sort((a,b)=>(b.invoked||0)-(a.invoked||0)).slice(0,10);
+    const labels = top.map(i=>shortenClassName(i.methodSignature));
+    const data = top.map(i=>i.invoked||0);
+    const ctx = document.getElementById('topInvoked').getContext('2d');
+    if(window._topInvoked) window._topInvoked.destroy();
+    window._topInvoked = new Chart(ctx,{
+      type:'bar',
+      data:{labels,datasets:[{label:'Invocations',data}]},
+      options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}}
+    });
+  }
+
+  function renderProducesPie(items){
+    const counts = {};
+    items.forEach(i=>{
+      const p = i.produces || 'unspecified';
+      counts[p] = (counts[p] || 0) + 1;
+    });
+    const labels = Object.keys(counts);
+    const data = Object.values(counts);
+    const ctx = document.getElementById('producesPie').getContext('2d');
+    if(window._producesPie) window._producesPie.destroy();
+    window._producesPie = new Chart(ctx,{
+      type:'doughnut',
+      data:{labels,datasets:[{data}]},
+      options:{responsive:true,plugins:{legend:{position:'right'}}}
+    });
+  }
+
+  /* FIXED TABLE FUNCTION */
+  function renderTable(items){
+    const tbody = document.querySelector('#endpointsTable tbody');
+    tbody.innerHTML = '';
+    items.forEach(it=>{
+      const tr = document.createElement('tr');
+      
+      tr.innerHTML = `
+        <td style="white-space:nowrap">${it.verb||''}</td>
+        <td><code>${it.path||''}</code></td>
+        <td>${it.invoked||0}</td>
+        <td title="${it.methodSignature||''}">${shortenClassName(it.methodSignature)}</td>
+      `;
+        tr.style.cursor = "pointer";
+        tr.addEventListener("click", () => {
+          const encoded = encodeURIComponent(it.methodSignature);
+          window.location.href = `rest-endpoint-dashboard.html?rest=${encoded}`;
+        });
+      tbody.appendChild(tr);
+    });
+  }
+
+  function populateVerbFilter(items){
+    const sel = document.getElementById('verbFilter');
+    const verbs = Array.from(new Set(items.map(i=>i.verb).filter(Boolean)));
+    sel.innerHTML = '<option value="">All verbs</option>' +
+      verbs.map(v=>`<option value="${v}">${v}</option>`).join('');
+  }
+
+  document.getElementById('q').addEventListener('input',()=>renderAll(window._restMethodsRaw||[]));
+  document.getElementById('verbFilter').addEventListener('change',()=>renderAll(window._restMethodsRaw||[]));
+  document.getElementById('refresh').addEventListener('click',()=>fetchAndRender());
+
+  fetchAndRender();
+</script>
+</body>
+</html>

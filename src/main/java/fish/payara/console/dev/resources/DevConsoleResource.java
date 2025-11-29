@@ -54,8 +54,10 @@ import fish.payara.console.dev.dto.ProducerDTO;
 import fish.payara.console.dev.model.ProducerInfo;
 import fish.payara.console.dev.dto.RestMethodDTO;
 import fish.payara.console.dev.dto.RestResourceDTO;
+import fish.payara.console.dev.model.HTTPRecord;
 import fish.payara.console.dev.model.InterceptedClassInfo;
 import fish.payara.console.dev.model.ScopedBeanInfo;
+import fish.payara.console.dev.rest.RestMetricsRegistry;
 import jakarta.enterprise.context.ContextNotActiveException;
 import jakarta.enterprise.context.spi.Context;
 import jakarta.enterprise.context.spi.Contextual;
@@ -407,7 +409,15 @@ private void collectRecursive(BeanGraphDTO.BeanNode node,
     @Produces(MediaType.APPLICATION_JSON)
     public List<RestMethodDTO> getRestMethods() {
         guard();
-        return registry.getRestMethodInfoMap().values().stream().collect(Collectors.toList());
+
+        return registry.getRestMethodInfoMap().values().stream()
+                .peek(v -> {
+                    int count = restregistry.getMetrics()
+                            .getOrDefault(v.getMethodSignature(), List.of())
+                            .size();
+                    v.setInvoked(count);
+                })
+                .collect(Collectors.toList());
     }
 
     @GET
@@ -453,5 +463,39 @@ private void collectRecursive(BeanGraphDTO.BeanNode node,
         return annotations.stream().anyMatch(a
                 -> a.annotationType().isAnnotationPresent(jakarta.interceptor.InterceptorBinding.class)
         );
+    }
+
+    
+    @Inject
+    private RestMetricsRegistry restregistry;
+    /**
+     * Return full details for a rest method.  Tries to lookup runtime records from a RestMetricsRegistry bean
+     * if present in the CDI container. The {path} parameter is matched against the stored methodSignature
+     * (declaringClass#methodName) or the registered REST path.
+     */
+    @GET
+    @Path("/rest-methods/{path}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getRestMethodFullByPath(@PathParam("path") String path) {
+        guard();
+
+        // find RestMethodDTO by matching either methodSignature or the configured path
+        RestMethodDTO found = registry.getRestMethodInfoMap().values().stream()
+                .filter(m -> (m.getMethodSignature() != null && m.getMethodSignature().equals(path))
+                        || (m.getPath() != null && m.getPath().equals(path)))
+                .findFirst().orElse(null);
+
+        if (found == null) {
+            throw new NotFoundException();
+        }
+
+        // Build full DTO
+        fish.payara.console.dev.dto.RestMethodFullDTO full = new fish.payara.console.dev.dto.RestMethodFullDTO(
+                found.getMethodSignature(), found.getPath(), found.getHttpMethodAndProduces());
+
+        List<HTTPRecord> records = restregistry.getMetrics().get(found.getMethodSignature());
+        full.setRecords(records);
+        
+        return Response.ok(full).build();
     }
 }

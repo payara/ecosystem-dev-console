@@ -39,11 +39,10 @@
 package fish.payara.console.dev.dto;
 
 public class RestMethodDTO {
-    private String methodSignature;
-    private String path;
-    private String httpMethodAndProduces; 
-
-    public RestMethodDTO() {}
+    private final String methodSignature;
+    private final String path;
+    private final String httpMethodAndProduces;
+    private int invoked;
 
     public RestMethodDTO(String methodSignature, String path, String httpMethodAndProduces) {
         this.methodSignature = methodSignature;
@@ -55,10 +54,6 @@ public class RestMethodDTO {
         return methodSignature;
     }
 
-    public void setMethodSignature(String methodSignature) {
-        this.methodSignature = methodSignature;
-    }
-
     public String getPath() {
         return path;
     }
@@ -67,11 +62,12 @@ public class RestMethodDTO {
         return httpMethodAndProduces;
     }
 
-    public void setPath(String path) {
-        this.path = path;
+    public int getInvoked() {
+        return invoked;
     }
 
-    public void setHttpMethodAndProduces(String httpMethodAndProduces) {
-        this.httpMethodAndProduces = httpMethodAndProduces;
+    public void setInvoked(int invoked) {
+        this.invoked = invoked;
     }
+    
 }

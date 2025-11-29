@@ -181,26 +181,6 @@
                     <tbody></tbody>
                 </table>
             </div>
-
-            <div id="RestMethods" class="tabcontent" role="tabpanel" aria-labelledby="side-RestMethods">
-                <div class="action-buttons">
-                    <label for="sort-RestMethods" style="font-weight:600;">Sort:</label>
-                    <select class="sort-select" id="sort-RestMethods" aria-label="Sort REST methods" onchange="sortBeans('RestMethods')">
-                        <option value="asc">A to Z</option>
-                        <option value="desc">Z to A</option>
-                    </select>
-                    <button class="action-btn" onclick="exportCSV('RestMethods')">Export CSV</button>
-                    <button class="action-btn" onclick="copyToClipboard('RestMethods')">Copy</button>
-                </div>
-                <table id="RestMethodsTable" tabindex="0">
-                    <thead><tr>
-                            <th onclick="sortColumn('RestMethods', 0)" tabindex="0" aria-sort="none">Class</th>
-                            <th onclick="sortColumn('RestMethods', 1)" tabindex="0" aria-sort="none">Path</th>
-                            <th onclick="sortColumn('RestMethods', 2)" tabindex="0" aria-sort="none">Description</th>
-                        </tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
             <div id="SecurityAnnotations" class="tabcontent" role="tabpanel" aria-labelledby="side-SecurityAnnotations">
                 <div class="action-buttons">
                     <button class="action-btn" onclick="exportSecurityAnnotationsCSV()">Export CSV</button>

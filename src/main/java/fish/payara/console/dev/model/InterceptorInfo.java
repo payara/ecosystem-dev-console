@@ -47,9 +47,8 @@ import java.util.stream.Collectors;
 /**
  * A DTO holding metadata about a CDI Interceptor.
  */
-public class InterceptorInfo {
+public class InterceptorInfo extends BeanInfo {
 
-    private final String className;
     private final Set<String> interceptorBindings;
     private final int priority;
     private final String scope;
@@ -60,15 +59,11 @@ public class InterceptorInfo {
             int priority,
             String scope,
             Set<String> classQualifiers) {
-        this.className = className;
+        super(className);
         this.interceptorBindings = interceptorBindings;
         this.priority = priority;
         this.scope = scope;
         this.classQualifiers = classQualifiers;
-    }
-
-    public String getClassName() {
-        return className;
     }
 
     public Set<String> getInterceptorBindings() {
