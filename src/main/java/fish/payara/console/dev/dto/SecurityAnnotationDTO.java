@@ -38,33 +38,109 @@
  */
 package fish.payara.console.dev.dto;
 
-import java.lang.annotation.Annotation;
-import java.util.Set;
+import fish.payara.console.dev.model.AuditInfo;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
+
+import jakarta.enterprise.inject.spi.AnnotatedMethod;
+import jakarta.enterprise.inject.spi.AnnotatedType;
+
+import java.lang.reflect.Method;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class SecurityAnnotationDTO {
-    private String key;
-    private Set<String> annotationClassNames;
 
-    public SecurityAnnotationDTO(String key, Set<Annotation> annotations) {
-        this.key = key;
-        this.annotationClassNames = annotations.stream()
-                .map(annotation -> annotation.annotationType().getName())
-                .collect(java.util.stream.Collectors.toSet());
+    private String className;
+    private String methodName;
+
+    private List<String> httpMethods;
+    private List<String> paths;
+    private List<String> produces;
+    private List<String> security;
+
+    public SecurityAnnotationDTO(Object element, AuditInfo entry) {
+        extractClassAndMethod(element);
+        extractAnnotations(entry);
     }
 
-    public String getKey() {
-        return key;
+    private void extractClassAndMethod(Object element) {
+        try {
+            if (element instanceof AnnotatedMethod<?> am) {
+                Method m = am.getJavaMember();
+                this.className = m.getDeclaringClass().getName();
+                this.methodName = m.getName();
+            }
+            else if (element instanceof AnnotatedType<?> at) {
+                this.className = at.getJavaClass().getName();
+                this.methodName = "(class-level)";
+            }
+        } catch (Exception e) {
+            this.className = "Unknown";
+            this.methodName = "Unknown";
+        }
     }
 
-    public void setKey(String key) {
-        this.key = key;
+    private void extractAnnotations(AuditInfo entry) {
+
+        // SECURITY ANNOTATIONS
+        this.security = entry.getSecurityAnnotations().stream()
+                .map(a -> a.annotationType().getSimpleName())
+                .collect(Collectors.toList());
+
+        // HTTP METHOD ANNOTATIONS (like @GET, @POST, @PUT, ...)
+        this.httpMethods = entry.getHttpMethodAnnotations().stream()
+                .map(a -> a.annotationType().getSimpleName())
+                .collect(Collectors.toList());
+
+        // @Path
+        this.paths = entry.getPathAnnotations().stream()
+                .map(a -> ((Path) a).value())
+                .collect(Collectors.toList());
+
+        // @Produces
+        this.produces = entry.getProducesAnnotations().stream()
+                .flatMap(a -> Arrays.stream(((Produces) a).value()))
+                .collect(Collectors.toList());
     }
 
-    public Set<String> getAnnotationClassNames() {
-        return annotationClassNames;
+    // ---------------------------------------------
+    // GETTERS (required for JSON serialization)
+    // ---------------------------------------------
+
+    public String getClassName() {
+        return className;
     }
 
-    public void setAnnotationClassNames(Set<String> annotationClassNames) {
-        this.annotationClassNames = annotationClassNames;
+    public String getMethodName() {
+        return methodName;
+    }
+
+    public List<String> getHttpMethods() {
+        return httpMethods;
+    }
+
+    public List<String> getPaths() {
+        return paths;
+    }
+
+    public List<String> getProduces() {
+        return produces;
+    }
+
+    public List<String> getSecurity() {
+        return security;
+    }
+
+    @Override
+    public String toString() {
+        return "SecurityAnnotationDTO{" +
+                "className='" + className + '\'' +
+                ", methodName='" + methodName + '\'' +
+                ", httpMethods=" + httpMethods +
+                ", paths=" + paths +
+                ", produces=" + produces +
+                ", security=" + security +
+                '}';
     }
 }

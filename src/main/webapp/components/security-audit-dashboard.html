@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <link rel="stylesheet" type="text/css" href="../css/common-dashboard.css">
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Security Audit — CDI Dev Mode</title>
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    </head>
+
+    <body>
+        <div class="page">
+            <h1>Security Audit</h1>
+
+            <div class="controls">
+                <input id="q" type="search" placeholder="Filter by annotation, method, or path" />
+                <button id="refresh">Refresh</button>
+            </div>
+
+            <div class="cards-row" id="summaryCards"></div>
+
+            <div class="card full-width">
+                <div class="small">Security Violations</div>
+
+                <div class="audit-wrapper">
+                    <table id="auditTable">
+                        <thead>
+                            <tr>
+                                <th>HTTP Method</th>
+                                <th>Path</th>
+                                <th>Produces</th>
+                                <th>Security Annotations</th>
+                                <th>Class</th>
+                                <th>Method</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+        <script>
+
+            async function fetchAndRender() {
+                try {
+                    const res = await fetch("../resources/dev/security-audit");
+                    const data = await res.json();
+                    window._auditRaw = data;
+                    renderAll(data);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            function renderAll(items) {
+                const q = document.getElementById("q").value.toLowerCase().trim();
+
+                const filtered = items.filter(it => {
+                    return it.className.toLowerCase().includes(q)
+                            || it.methodName.toLowerCase().includes(q)
+                            || it.httpMethods.join(",").toLowerCase().includes(q)
+                            || it.paths.join(",").toLowerCase().includes(q)
+                            || it.produces.join(",").toLowerCase().includes(q)
+                            || it.security.join(",").toLowerCase().includes(q);
+                });
+
+                renderSummary(items);
+                renderTable(filtered);
+            }
+
+            function renderSummary(items) {
+                const total = items.length;
+
+                const allSec = new Set(items.flatMap(e => e.security));
+                const uniqueSecurity = allSec.size;
+
+                const cards = [
+                    {label: "Audit Entries", value: total},
+                    {label: "Unique Security Annotations", value: uniqueSecurity}
+                ];
+
+                const colors = [
+                    'linear-gradient(135deg,#ef4444,#dc2626)',
+                    'linear-gradient(135deg,#6366f1,#3b82f6)'
+                ];
+
+                const c = document.getElementById("summaryCards");
+                c.innerHTML = "";
+
+                cards.forEach((card, i) => {
+                    const d = document.createElement("div");
+                    d.className = "stat";
+                    d.style.background = colors[i];
+                    d.innerHTML = `<div class="label">${card.label}</div><div class="value">${card.value}</div>`;
+                    c.appendChild(d);
+                });
+            }
+
+            function renderTable(items) {
+                const tb = document.querySelector("#auditTable tbody");
+                tb.innerHTML = "";
+
+                items.forEach(it => {
+                    const http = it.httpMethods.length ? it.httpMethods.join("<br>") : "—";
+                    const paths = it.paths.length ? it.paths.join("<br>") : "—";
+                    const produces = it.produces.length ? it.produces.join("<br>") : "—";
+                    const security = it.security.length
+                            ? it.security.map(s => `<span class="pill">${s}</span>`).join(" ")
+                            : "—";
+
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                    <td>${http}</td>
+                    <td>${paths}</td>
+                    <td>${produces}</td>
+                    <td>${security}</td>
+                    <td>${it.className}</td>
+                    <td>${it.methodName}</td>
+                `;
+                    tb.appendChild(tr);
+                });
+            }
+
+            document.getElementById("q").addEventListener("input", () => renderAll(window._auditRaw || []));
+            document.getElementById("refresh").addEventListener("click", fetchAndRender);
+
+            fetchAndRender();
+
+        </script>
+
+    </body>
+</html>

@@ -4,323 +4,118 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>Payara Dev Console</title>
-        <link rel="stylesheet" href="main.css" />
+        <link rel="stylesheet" href="assets/css/main.css" />
     </head>
     <body>
         <div id="sidePane" role="navigation" aria-label="Dev Console">
+
             <h2>
-                <img src="images/payara-fish-logo.svg" alt="Payara" width="60" height="20">
+                <img src="assets/images/payara-fish-logo.svg" alt="Payara" width="60" height="20">
                 Dev Console
             </h2>
-            <button class="sideButton" aria-selected="false" aria-controls="CDIDevConsole" id="side-CDIDevConsole" tabindex="0" onclick="openPane(event, 'CDIDevConsole')">
+
+            <button class="sideButton" aria-selected="false"
+                    aria-controls="CDIDevConsole" id="side-CDIDevConsole" tabindex="0"
+                    onclick="openPane(event, 'CDIDevConsole')">
                 CDI Dev Console
             </button>
-            <button class="sideButton" aria-selected="false" aria-controls="MetricsDashboard" id="side-MetricsDashboard" tabindex="0" onclick="openPane(event, 'MetricsDashboard')">
+
+            <button class="sideButton" aria-selected="false"
+                    aria-controls="MetricsDashboard" id="side-MetricsDashboard" tabindex="0"
+                    onclick="openPane(event, 'MetricsDashboard')">
                 Metrics Console
             </button>
-            <button class="sideButton" aria-selected="false" aria-controls="ScopedBeans" id="side-ScopedBeans" tabindex="0" onclick="openPane(event, 'ScopedBeans')">
-                Scoped Beans <span id="count-ScopedBeans" class="count-badge" aria-label="Scoped Beans count"></span>
+
+            <button class="sideButton" aria-selected="false"
+                    aria-controls="ScopedBeans" id="side-ScopedBeans" tabindex="0"
+                    onclick="openPane(event, 'ScopedBeans')">
+                Scoped Beans 
+                <span id="count-ScopedBeans" class="count-badge" aria-label="Scoped Beans count"></span>
             </button>
-            <button class="sideButton" aria-selected="false" aria-controls="Producers" id="side-Producers" tabindex="0" onclick="openPane(event, 'Producers')">
-                Producers <span id="count-Producers" class="count-badge" aria-label="Producers count"></span>
+
+            <button class="sideButton" aria-selected="false"
+                    aria-controls="Producers" id="side-Producers" tabindex="0"
+                    onclick="openPane(event, 'Producers')">
+                Producers 
+                <span id="count-Producers" class="count-badge" aria-label="Producers count"></span>
             </button>
-            <button class="sideButton" aria-selected="false" aria-controls="Interceptors" id="side-Interceptors" tabindex="0" onclick="openPane(event, 'Interceptors')">
-                Interceptors <span id="count-Interceptors" class="count-badge" aria-label="Interceptors count"></span>
+
+            <button class="sideButton" aria-selected="false"
+                    aria-controls="Interceptors" id="side-Interceptors" tabindex="0"
+                    onclick="openPane(event, 'Interceptors')">
+                Interceptors 
+                <span id="count-Interceptors" class="count-badge" aria-label="Interceptors count"></span>
             </button>
-            <button class="sideButton" aria-selected="false" aria-controls="InterceptedClasses" id="side-InterceptedClasses" tabindex="0" onclick="openPane(event, 'InterceptedClasses')">
-                Intercepted Classes <span id="count-InterceptedClasses" class="count-badge" aria-label="InterceptedClasses count"></span>
+
+            <button class="sideButton" aria-selected="false"
+                    aria-controls="InterceptedClasses" id="side-InterceptedClasses" tabindex="0"
+                    onclick="openPane(event, 'InterceptedClasses')">
+                Intercepted Classes 
+                <span id="count-InterceptedClasses" class="count-badge" aria-label="InterceptedClasses count"></span>
             </button>
-            <button class="sideButton" aria-selected="false" aria-controls="Decorators" id="side-Decorators" tabindex="0" onclick="openPane(event, 'Decorators')">
-                Decorators <span id="count-Decorators" class="count-badge" aria-label="Decorators count"></span>
+
+            <button class="sideButton" aria-selected="false"
+                    aria-controls="Decorators" id="side-Decorators" tabindex="0"
+                    onclick="openPane(event, 'Decorators')">
+                Decorators 
+                <span id="count-Decorators" class="count-badge" aria-label="Decorators count"></span>
             </button>
-            <button class="sideButton" aria-selected="false" aria-controls="Extensions" id="side-Extensions" tabindex="0" onclick="openPane(event, 'Extensions')">
-                Extensions <span id="count-Extensions" class="count-badge" aria-label="Extensions count"></span>
+
+            <button class="sideButton" aria-selected="false"
+                    aria-controls="DecoratedClasses" id="side-DecoratedClasses" tabindex="0"
+                    onclick="openPane(event, 'DecoratedClasses')">
+                Decorated Classes 
+                <span id="count-DecoratedClasses" class="count-badge" aria-label="DecoratedClasses count"></span>
             </button>
-            <button
-                class="sideButton"
-                aria-selected="false"
-                aria-controls="Observer"
-                id="side-Observer"
-                tabindex="0"
-                onclick="openPane(event, 'Observer')"
-                >
-                Observer Events <span id="count-Observer" class="count-badge" aria-label="observer events count"></span>
+
+            <button class="sideButton" aria-selected="false"
+                    aria-controls="Extensions" id="side-Extensions" tabindex="0"
+                    onclick="openPane(event, 'Extensions')">
+                Extensions 
+                <span id="count-Extensions" class="count-badge" aria-label="Extensions count"></span>
             </button>
-            <button
-                class="sideButton"
-                aria-selected="false"
-                aria-controls="Events"
-                id="side-Events"
-                tabindex="0"
-                onclick="openPane(event, 'Events')"
-                >
-                Live Events <span id="count-Events" class="count-badge" aria-label="Events count"></span>
+
+            <button class="sideButton" aria-selected="false"
+                    aria-controls="Observers" id="side-Observers" tabindex="0"
+                    onclick="openPane(event, 'Observers')">
+                Observer Events 
+                <span id="count-Observers" class="count-badge" aria-label="Observer Events count"></span>
             </button>
-            <button
-                class="sideButton"
-                aria-selected="false"
-                aria-controls="Processed"
-                id="side-Processed"
-                tabindex="0"
-                onclick="openPane(event, 'Processed')"
-                >
-                Processed Beans <span id="count-Processed" class="count-badge" aria-label="managed beans count"></span>
+
+            <button class="sideButton" aria-selected="false"
+                    aria-controls="Events" id="side-Events" tabindex="0"
+                    onclick="openPane(event, 'Events')">
+                Live Events 
+                <span id="count-Events" class="count-badge" aria-label="Events count"></span>
             </button>
-            <button
-                class="sideButton"
-                aria-selected="false"
-                aria-controls="SeenTypes"
-                id="side-SeenTypes"
-                tabindex="0"
-                onclick="openPane(event, 'SeenTypes')"
-                >
-                Seen Types <span id="count-SeenTypes" class="count-badge" aria-label="seen types count"></span>
+
+            <button class="sideButton" aria-selected="false"
+                    aria-controls="RestMethods" id="side-RestMethods" tabindex="0"
+                    onclick="openPane(event, 'RestMethods')">
+                REST Methods 
+                <span id="count-RestMethods" class="count-badge" aria-label="REST methods count"></span>
             </button>
-            <button class="sideButton" aria-selected="false" aria-controls="BeanGraph" id="side-BeanGraph" tabindex="0" onclick="openPane(event, 'BeanGraph')">Bean Dependency Graph</button>
-            <button class="sideButton" aria-selected="false" aria-controls="RestResources" id="side-RestResources" tabindex="0" onclick="openPane(event, 'RestResources')">
-                REST Resources <span id="count-RestResources" class="count-badge" aria-label="rest resources count"></span>
+
+            <button class="sideButton" aria-selected="false"
+                    aria-controls="RestExceptionMappers" id="side-RestExceptionMappers" tabindex="0"
+                    onclick="openPane(event, 'RestExceptionMappers')">
+                REST Exception Mappers 
+                <span id="count-RestExceptionMappers" class="count-badge" aria-label="REST exception mappers count"></span>
             </button>
-            <button class="sideButton" aria-selected="false" aria-controls="RestMethods" id="side-RestMethods" tabindex="0" onclick="openPane(event, 'RestMethods')">
-                REST Methods <span id="count-RestMethods" class="count-badge" aria-label="rest methods count"></span>
+
+            <button class="sideButton" aria-selected="false"
+                    aria-controls="SecurityAnnotations" id="side-SecurityAnnotations" tabindex="0"
+                    onclick="openPane(event, 'SecurityAnnotations')">
+                Security Annotations 
+                <span id="count-SecurityAnnotations" class="count-badge" aria-label="Security annotations count"></span>
             </button>
-            <button class="sideButton" aria-selected="false" aria-controls="RestExceptionMappers" id="side-RestExceptionMappers" tabindex="0" onclick="openPane(event, 'RestExceptionMappers')">REST Exception Mappers <span id="count-RestExceptionMappers" class="count-badge" aria-label="rest exception mappers count"></span></button>
-            <button class="sideButton" aria-selected="false" aria-controls="SecurityAnnotations" id="side-SecurityAnnotations" tabindex="0" onclick="openPane(event, 'SecurityAnnotations')">Security Annotations <span id="count-SecurityAnnotations" class="count-badge" aria-label="security annotations count"></span></button>
+
         </div>
-        
+
         <iframe id="dashboardIframe" title="Dashboard" style="width:100%; height:100%; min-height:480px; border:0; display:block; margin-top:12px;"></iframe>
-            
-        <div id="contentArea">
-            <input
-                type="text"
-                id="searchInput"
-                aria-label="Search"
-                onkeyup="filterBeans()"
-                placeholder="Search..."
-                />
 
-            <div id="Processed" class="tabcontent" role="tabpanel" aria-labelledby="side-Processed">
-                <div class="action-buttons">
-                    <label for="sort-Processed" style="font-weight:600;">Sort:</label>
-                    <select class="sort-select" id="sort-Processed" aria-label="Sort managed beans" onchange="sortBeans('Processed')">
-                        <option value="asc">A to Z</option>
-                        <option value="desc">Z to A</option>
-                    </select>
-                    <button class="action-btn" onclick="exportCSV('Processed')">Export CSV</button>
-                    <button class="action-btn" onclick="copyToClipboard('Processed')">Copy</button>
-                </div>
-                <table id="ProcessedTable" tabindex="0">
-                    <thead><tr>
-                            <th onclick="sortColumn('Processed', 0)" tabindex="0" aria-sort="none">Type</th>
-                            <th onclick="sortColumn('Processed', 1)" tabindex="0" aria-sort="none">Bean Class</th>
-                        </tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-
-            <div id="Observer" class="tabcontent" role="tabpanel" aria-labelledby="side-Observer">
-                <div class="action-buttons">
-                    <button class="action-btn" onclick="exportCSV('Observer')">Export CSV</button>
-                    <button class="action-btn" onclick="copyToClipboard('Observer')">Copy</button>
-                </div>
-                <table id="ObserverTable" tabindex="0" role="grid" aria-label="Observer Events Table">
-                    <thead><tr>
-                            <th onclick="sortColumn('Observer', 0)" tabindex="0" aria-sort="none">Event Type</th>
-                            <th onclick="sortColumn('Observer', 1)" tabindex="0" aria-sort="none">Bean Class</th>
-                            <th onclick="sortColumn('Observer', 2)" tabindex="0" aria-sort="none">Reception</th>
-                            <th onclick="sortColumn('Observer', 3)" tabindex="0" aria-sort="none">Phase</th>
-                        </tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-
-            <div id="Events" class="tabcontent" role="tabpanel" aria-labelledby="side-Events">
-                <div class="action-buttons">
-                    <button class="action-btn" onclick="exportCSV('Events')">Export CSV</button>
-                    <button class="action-btn" onclick="copyToClipboard('Events')">Copy</button>
-                </div>
-                <table id="EventsTable" tabindex="0" role="grid" aria-label="Events Table">
-                    <thead><tr>
-                            <th onclick="sortColumn('Events', 0)" tabindex="0" aria-sort="none">Event Type</th>
-                            <th onclick="sortColumn('Events', 1)" tabindex="0" aria-sort="none">Fired By</th>
-                            <th onclick="sortColumn('Events', 2)" tabindex="0" aria-sort="none">Timestamp</th>
-                            <th onclick="sortColumn('Events', 3)" tabindex="0" aria-sort="none">Notified Observers</th>
-                        </tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-
-            <div id="SeenTypes" class="tabcontent" role="tabpanel" aria-labelledby="side-SeenTypes">
-                <div class="action-buttons">
-                    <button class="action-btn" onclick="exportCSV('SeenTypes')">Export CSV</button>
-                    <button class="action-btn" onclick="copyToClipboard('SeenTypes')">Copy</button>
-                </div>
-                <table id="SeenTypesTable" tabindex="0">
-                    <thead><tr>
-                            <th onclick="sortColumn('SeenTypes', 0)" tabindex="0" aria-sort="none">Class Name</th>
-                            <th onclick="sortColumn('SeenTypes', 1)" tabindex="0" aria-sort="none">Annotations</th>
-                        </tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-
-            <div id="RestResources" class="tabcontent" role="tabpanel" aria-labelledby="side-RestResources">
-                <div class="action-buttons">
-                    <label for="sort-RestResources" style="font-weight:600;">Sort:</label>
-                    <select class="sort-select" id="sort-RestResources" aria-label="Sort REST resources" onchange="sortBeans('RestResources')">
-                        <option value="asc">A to Z</option>
-                        <option value="desc">Z to A</option>
-                    </select>
-                    <button class="action-btn" onclick="exportCSV('RestResources')">Export CSV</button>
-                    <button class="action-btn" onclick="copyToClipboard('RestResources')">Copy</button>
-                </div>
-                <table id="RestResourcesTable" tabindex="0">
-                    <thead><tr>
-                            <th onclick="sortColumn('RestResources', 0)" tabindex="0" aria-sort="none">Class</th>
-                            <th onclick="sortColumn('RestResources', 1)" tabindex="0" aria-sort="none">Path</th>
-                        </tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-            <div id="SecurityAnnotations" class="tabcontent" role="tabpanel" aria-labelledby="side-SecurityAnnotations">
-                <div class="action-buttons">
-                    <button class="action-btn" onclick="exportSecurityAnnotationsCSV()">Export CSV</button>
-                    <button class="action-btn" onclick="copySecurityAnnotationsToClipboard()">Copy</button>
-                </div>
-                <table id="SecurityAnnotationsTable" tabindex="0">
-                    <thead><tr>
-                            <th>Key (Object)</th>
-                            <th>Annotations</th>
-                        </tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-            <div id="RestExceptionMappers" class="tabcontent" role="tabpanel" aria-labelledby="side-RestExceptionMappers">
-                <div class="action-buttons">
-                    <label for="sort-RestExceptionMappers" style="font-weight:600;">Sort:</label>
-                    <select class="sort-select" id="sort-RestExceptionMappers" aria-label="Sort REST exception mappers" onchange="sortBeans('RestExceptionMappers')">
-                        <option value="asc">A to Z</option>
-                        <option value="desc">Z to A</option>
-                    </select>
-                    <button class="action-btn" onclick="exportCSV('RestExceptionMappers')">Export CSV</button>
-                    <button class="action-btn" onclick="copyToClipboard('RestExceptionMappers')">Copy</button>
-                </div>
-                <table id="RestExceptionMappersTable" tabindex="0">
-                    <thead><tr>
-                            <th onclick="sortColumn('RestExceptionMappers', 0)" tabindex="0" aria-sort="none">Exception Mapper Class</th>
-                            <th onclick="sortColumn('RestExceptionMappers', 1)" tabindex="0" aria-sort="none">Exception Type</th>
-                        </tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-
-            <div id="BeanGraph" class="tabcontent" role="tabpanel" aria-labelledby="side-BeanGraph">
-                <script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-                <div id="graphContainer" style="width: 100%; height: 500px; background: #fff; border: 1px solid #ccc; border-radius: 6px;"></div>
-            </div>
-
-            <!-- New tabs for the requested endpoints -->
-            <div id="ScopedBeans" class="tabcontent" role="tabpanel" aria-labelledby="side-ScopedBeans">
-                <div class="action-buttons">
-                    <button class="action-btn" onclick="exportCSV('ScopedBeans')">Export CSV</button>
-                    <button class="action-btn" onclick="copyToClipboard('ScopedBeans')">Copy</button>
-                </div>
-                <table id="ScopedBeansTable" tabindex="0">
-                    <thead><tr>
-                            <th>Scope</th>
-                            <th>Current Count</th>
-                            <th>Created Count</th>
-                            <th>Last Created</th>
-                            <th>Max Count</th>
-                            <th>Destroyed Count</th>
-                            <th>Bean Class</th>
-                            <th>Types</th>
-                            <th>Name</th>
-                            <th>Qualifiers</th>
-                        </tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-
-            <div id="Producers" class="tabcontent" role="tabpanel" aria-labelledby="side-Producers">
-                <div class="action-buttons">
-                    <button class="action-btn" onclick="exportCSV('Producers')">Export CSV</button>
-                    <button class="action-btn" onclick="copyToClipboard('Producers')">Copy</button>
-                </div>
-                <table id="ProducersTable" tabindex="0">
-                    <thead><tr>
-                            <th>Producer Class</th>
-                            <th>Produced Type</th>
-                            <th>Kind</th>
-                            <th>Member Signature</th>
-                            <th>Instance Produced</th>
-                            <th>Last Produced</th>
-                        </tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-
-            <div id="Interceptors" class="tabcontent" role="tabpanel" aria-labelledby="side-Interceptors">
-                <div class="action-buttons">
-                    <button class="action-btn" onclick="exportCSV('Interceptors')">Export CSV</button>
-                    <button class="action-btn" onclick="copyToClipboard('Interceptors')">Copy</button>
-                </div>
-                <table id="InterceptorsTable" tabindex="0">
-                    <thead><tr>
-                            <th>Interceptor Class Name</th>
-                            <th>Interceptor Bindings</th>
-                            <th>Priority</th>
-                        </tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-
-            <div id="InterceptedClasses" class="tabcontent" role="tabpanel" aria-labelledby="side-InterceptedClasses">
-                <div class="action-buttons">
-                    <button class="action-btn" onclick="exportCSV('InterceptedClasses')">Export CSV</button>
-                    <button class="action-btn" onclick="copyToClipboard('InterceptedClasses')">Copy</button>
-                </div>
-                <table id="InterceptedClassesTable" tabindex="0">
-                    <thead><tr>
-                            <th>Intercepted Class Name</th>
-                            <th>Interceptor Bindings</th>
-                        </tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-
-            <div id="Decorators" class="tabcontent" role="tabpanel" aria-labelledby="side-Decorators">
-                <div class="action-buttons">
-                    <button class="action-btn" onclick="exportCSV('Decorators')">Export CSV</button>
-                    <button class="action-btn" onclick="copyToClipboard('Decorators')">Copy</button>
-                </div>
-                <table id="DecoratorsTable" tabindex="0">
-                    <thead><tr>
-                            <th>Decorator Class Name</th>
-                            <th>Delegate Type</th>
-                        </tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-
-            <div id="Extensions" class="tabcontent" role="tabpanel" aria-labelledby="side-Extensions">
-                <div class="action-buttons">
-                    <button class="action-btn" onclick="exportCSV('Extensions')">Export CSV</button>
-                    <button class="action-btn" onclick="copyToClipboard('Extensions')">Copy</button>
-                </div>
-                <table id="ExtensionsTable" tabindex="0">
-                    <thead><tr>
-                            <th>Extension Class Name</th>
-                        </tr></thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-
-        </div>
-        <script src="security-annotations.js"></script>
-        <script src="bean-graph.js"></script>
-        <script src="tabs.js"></script>
-        <script src="data-models.js"></script>
-        <script src="utils.js"></script>
-        <script src="main.js"></script>
+        <script src="assets/js/tabs.js"></script>
+        <script src="assets/js/utils.js"></script>
+        <script src="assets/js/main.js"></script>
     </body>
 </html>

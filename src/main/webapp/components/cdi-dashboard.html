@@ -1,121 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
+        <link rel="stylesheet" type="text/css" href="../css/common-dashboard.css">
         <meta charset="utf-8" />
         <title>CDI Scope & Event Dashboard</title>
 
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-funnel@4"></script>
         <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@1.2.0"></script>
-
-
-        <style>
-            body {
-                margin: 0;
-                font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-                color: #1f2937;
-            }
-            .page {
-                margin: 18px auto;
-                padding: 12px;
-            }
-            .scope-cards {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-                gap: 15px;
-                padding: 10px;
-            }
-            .scope-card {
-                padding: 18px 20px;
-                border-radius: 12px;
-                color: white;
-                box-shadow: 0 6px 20px rgba(2,6,23,0.08);
-                display: flex;
-                flex-direction: column;
-                justify-content: space-between;
-                min-height: 110px;
-                transition: transform .12s ease;
-            }
-            .scope-card:hover {
-                transform: translateY(-4px);
-            }
-            .scope-title {
-                font-size: 0.95rem;
-                font-weight: 700;
-                opacity: .95;
-            }
-            .scope-value {
-                font-size: 1.6rem;
-                font-weight: 800;
-                margin-top: 8px;
-            }
-            .scope-instances {
-                margin-top: 8px;
-                font-size: 0.9rem;
-                opacity: .95;
-            }
-
-            .grid {
-                display: grid;
-                gap: 18px;
-                grid-template-columns: 1fr;
-                margin-top: 18px;
-            }
-            @media(min-width: 980px) {
-                .grid {
-                    grid-template-columns: 1fr 1fr;
-                }
-            }
-            .chart-box {
-                background: white;
-                padding: 14px;
-                border-radius: 12px;
-                box-shadow: 0 6px 20px rgba(2,6,23,0.06);
-            }
-            .chart-title {
-                font-weight: 700;
-                margin-bottom: 10px;
-                color: #111827;
-            }
-
-            .row {
-                display:flex;
-                gap:12px;
-                align-items:center;
-            }
-            .controls {
-                display:flex;
-                gap:8px;
-                align-items:center;
-                margin-left:auto;
-            }
-            .muted {
-                color: #6b7280;
-                font-size: .9rem;
-            }
-            
-        </style>
     </head>
     <body>
         <div class="page">
             <h2 style="margin:0">CDI Dashboard</h2>
-            <div id="scopeCards" class="scope-cards" aria-live="polite"></div>
+            <div id="summaryCards" class="cards-row" aria-live="polite"></div>
 
             <div class="grid">
                 <!-- Bean Charts -->
-                <div class="chart-box"><div class="chart-title">Beans per Scope</div><canvas id="beansPerScope" height="220"></canvas></div>
-                <div class="chart-box">      <div class="chart-title">Lifecycle Flow Funnel</div>      <canvas id="lifecycleFunnel" height="260"></canvas>    </div>
-                <div class="chart-box"><div class="chart-title">Bean Lifecycle Summary — Stacked</div><canvas id="beanLifecycle" height="220"></canvas></div>
-                <div class="chart-box"><div class="chart-title">Scope Distribution (Pie)</div><canvas id="scopePie" height="220"></canvas></div>
-                <div class="chart-box"><div class="chart-title">Top Beans by maxCount</div><canvas id="topMax" height="320"></canvas></div>
-                <div class="chart-box"><div class="chart-title">Last Created Timeline (by minute)</div><canvas id="createdTimeline" height="220"></canvas></div>
-                <div class="chart-box"><div class="chart-title">Qualifiers Distribution</div><canvas id="qualifierDoughnut" height="220"></canvas></div>
-                <div class="chart-box"><div class="chart-title">Scope Activity Heatmap</div><canvas id="scopeHeatmap" height="320"></canvas></div>
+                <div class="card"><div class="small">Beans per Scope</div><canvas id="beansPerScope" height="220"></canvas></div>
+                <div class="card"><div class="small">Lifecycle Flow Funnel</div>      <canvas id="lifecycleFunnel" height="260"></canvas>    </div>
+                <div class="card"><div class="small">Bean Lifecycle Summary — Stacked</div><canvas id="beanLifecycle" height="220"></canvas></div>
+                <div class="card"><div class="small">Scope Distribution (Pie)</div><canvas id="scopePie" height="220"></canvas></div>
+                <div class="card"><div class="small">Top Beans by maxCount</div><canvas id="topMax" height="320"></canvas></div>
+                <div class="card"><div class="small">Last Created Timeline (by minute)</div><canvas id="createdTimeline" height="220"></canvas></div>
+                <div class="card"><div class="small">Qualifiers Distribution</div><canvas id="qualifierDoughnut" height="220"></canvas></div>
+                <div class="card"><div class="small">Scope Activity Heatmap</div><canvas id="scopeHeatmap" height="320"></canvas></div>
 
                 <!-- Event Charts -->
-                <div class="chart-box"><div class="chart-title">Events Over Time (Stacked by Type)</div><canvas id="eventsTimeline" height="220"></canvas></div>
-                <div class="chart-box"><div class="chart-title">Events by Type</div><canvas id="eventsByType" height="220"></canvas></div>
-                <div class="chart-box"><div class="chart-title">Top Observers by Notifications</div><canvas id="topObservers" height="320"></canvas></div>
+                <div class="card"><div class="small">Events Over Time (Stacked by Type)</div><canvas id="eventsTimeline" height="220"></canvas></div>
+                <div class="card"><div class="small">Events by Type</div><canvas id="eventsByType" height="220"></canvas></div>
+                <div class="card"><div class="small">Top Observers by Notifications</div><canvas id="topObservers" height="320"></canvas></div>
             </div>
         </div>
 
@@ -129,7 +42,7 @@
                 "linear-gradient(135deg,#11998e,#38ef7d)"
             ];
 
-        // --- Helper Functions ---
+            // --- Helper Functions ---
             function shortenClassName(full) {
                 if (!full)
                     return '';
@@ -138,9 +51,9 @@
                 return parts.length > 2 ? parts.slice(-2).join(".") : s;
             }
 
-        // --- Load Data and Render ---
+            // --- Load Data and Render ---
             async function renderAll() {
-                const base = "resources/dev";
+                const base = "../resources/dev";
 
                 // Beans
                 const detailResp = await fetch(base + "/scoped-beans-detail");
@@ -167,26 +80,26 @@
                 renderTopObservers(events);
             }
 
-        // --- Card Rendering ---
+            // --- Card Rendering ---
             function renderCards(detail) {
-                const container = document.getElementById("scopeCards");
+                const container = document.getElementById("summaryCards");
                 container.innerHTML = "";
                 let i = 0;
                 for (const [scope, info] of Object.entries(detail)) {
                     const card = document.createElement("div");
-                    card.className = "scope-card";
+                    card.className = "stat";
                     card.style.background = gradients[i % gradients.length];
                     i++;
                     card.innerHTML = `
-              <div class="scope-title">${scope}</div>
-              <div class="scope-value">${info.beanCount}</div>
+              <div class="label">${scope}</div>
+              <div class="value">${info.beanCount}</div>
               <div class="scope-instances">Instances: ${info.instances || 0}</div>
             `;
                     container.appendChild(card);
                 }
             }
 
-        // --- Bean Charts ---
+            // --- Bean Charts ---
             function aggregateByScope(beans) {
                 const agg = {};
                 beans.forEach(b => {
@@ -230,136 +143,140 @@
                     options: {responsive: true, plugins: {tooltip: {mode: "index", intersect: false}}, scales: {x: {stacked: true}, y: {stacked: true, beginAtZero: true}}}
                 });
             }
-            
-            
-function renderLifecycleFunnel(beans) {
-  let created = 0, active = 0, destroyed = 0;
 
-  beans.forEach(b => {
-    created += b.createdCount || 0;
-    active += b.currentCount || 0;
-    destroyed += b.destroyedCount || 0;
-  });
 
-  const ctx = document.getElementById("lifecycleFunnel").getContext("2d");
-  if (window._lifecycleFunnel) window._lifecycleFunnel.destroy();
+            function renderLifecycleFunnel(beans) {
+                let created = 0, active = 0, destroyed = 0;
 
-  window._lifecycleFunnel = new Chart(ctx, {
-    type: "funnel",
-    data: {
-      labels: ["Created", "Active", "Destroyed"],
-      datasets: [{
-        data: [created, active, destroyed],
-        backgroundColor: [
-          "rgba(34,197,94,0.85)",
-          "rgba(59,130,246,0.85)",
-          "rgba(234,88,12,0.85)"
-        ]
-      }]
-    },
-    options: {
-      responsive: true,
-      sort: "none",
-      funnel: { dynamicHeight: true, dynamicSlope: true }
-    }
-  });
-}
+                beans.forEach(b => {
+                    created += b.createdCount || 0;
+                    active += b.currentCount || 0;
+                    destroyed += b.destroyedCount || 0;
+                });
 
-function renderScopeHeatmap(beans) {
-    const hours = [...Array(24).keys()];
-    const scopes = [...new Set(beans.map(b => b.scope || "Unknown"))];
+                const ctx = document.getElementById("lifecycleFunnel").getContext("2d");
+                if (window._lifecycleFunnel)
+                    window._lifecycleFunnel.destroy();
 
-    // Build empty matrix
-    const matrix = {};
-    scopes.forEach(s => {
-        matrix[s] = {};
-        hours.forEach(h => matrix[s][h] = 0);
-    });
-
-    // Fill creation counts
-    beans.forEach(b => {
-        if (!b.lastCreated) return;
-        const d = new Date(b.lastCreated);
-        if (isNaN(d)) return;
-        const hour = d.getHours();
-        const scope = b.scope || "Unknown";
-        matrix[scope][hour] = (matrix[scope][hour] || 0) + 1;
-    });
-
-    // Flatten for Chart.js matrix format
-    const data = [];
-    scopes.forEach((scope, row) => {
-        hours.forEach((h, col) => {
-            data.push({
-                x: h,
-                y: row,
-                v: matrix[scope][h]
-            });
-        });
-    });
-
-    const maxV = Math.max(...data.map(d => d.v));
-
-    const ctx = document.getElementById("scopeHeatmap").getContext("2d");
-    if (window._scopeHeatmap) window._scopeHeatmap.destroy();
-
-    window._scopeHeatmap = new Chart(ctx, {
-        type: "matrix",
-        data: {
-            datasets: [{
-                label: "Scope Heatmap",
-                data,
-                width: () => 18,
-                height: () => 18,
-                backgroundColor: d => {
-                    const v = d.raw.v;
-                    const alpha = v === 0 ? 0.05 : (0.15 + 0.85 * (v / maxV));
-                    return `rgba(99,102,241,${alpha})`;
-                },
-                borderWidth: 1,
-                borderColor: "rgba(148,163,184,0.25)"
-            }]
-        },
-        options: {
-            responsive: true,
-            aspectRatio: 2.4,
-            scales: {
-                x: {
-                    type: "linear",
-                    offset: true,
-                    position: "top",
-                    ticks: {
-                        callback: v => v + ":00",
-                        maxRotation: 0,
-                        autoSkip: true
+                window._lifecycleFunnel = new Chart(ctx, {
+                    type: "funnel",
+                    data: {
+                        labels: ["Created", "Active", "Destroyed"],
+                        datasets: [{
+                                data: [created, active, destroyed],
+                                backgroundColor: [
+                                    "rgba(34,197,94,0.85)",
+                                    "rgba(59,130,246,0.85)",
+                                    "rgba(234,88,12,0.85)"
+                                ]
+                            }]
                     },
-                    grid: { display: false }
-                },
-                y: {
-                    type: "linear",
-                    offset: true,
-                    ticks: {
-                        callback: v => scopes[v] || ""
+                    options: {
+                        responsive: true,
+                        sort: "none",
+                        funnel: {dynamicHeight: true, dynamicSlope: true}
+                    }
+                });
+            }
+
+            function renderScopeHeatmap(beans) {
+                const hours = [...Array(24).keys()];
+                const scopes = [...new Set(beans.map(b => b.scope || "Unknown"))];
+
+                // Build empty matrix
+                const matrix = {};
+                scopes.forEach(s => {
+                    matrix[s] = {};
+                    hours.forEach(h => matrix[s][h] = 0);
+                });
+
+                // Fill creation counts
+                beans.forEach(b => {
+                    if (!b.lastCreated)
+                        return;
+                    const d = new Date(b.lastCreated);
+                    if (isNaN(d))
+                        return;
+                    const hour = d.getHours();
+                    const scope = b.scope || "Unknown";
+                    matrix[scope][hour] = (matrix[scope][hour] || 0) + 1;
+                });
+
+                // Flatten for Chart.js matrix format
+                const data = [];
+                scopes.forEach((scope, row) => {
+                    hours.forEach((h, col) => {
+                        data.push({
+                            x: h,
+                            y: row,
+                            v: matrix[scope][h]
+                        });
+                    });
+                });
+
+                const maxV = Math.max(...data.map(d => d.v));
+
+                const ctx = document.getElementById("scopeHeatmap").getContext("2d");
+                if (window._scopeHeatmap)
+                    window._scopeHeatmap.destroy();
+
+                window._scopeHeatmap = new Chart(ctx, {
+                    type: "matrix",
+                    data: {
+                        datasets: [{
+                                label: "Scope Heatmap",
+                                data,
+                                width: () => 18,
+                                height: () => 18,
+                                backgroundColor: d => {
+                                    const v = d.raw.v;
+                                    const alpha = v === 0 ? 0.05 : (0.15 + 0.85 * (v / maxV));
+                                    return `rgba(99,102,241,${alpha})`;
+                                },
+                                borderWidth: 1,
+                                borderColor: "rgba(148,163,184,0.25)"
+                            }]
                     },
-                    grid: { display: false }
-                }
-            },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        title: () => "",
-                        label: ctx => {
-                            const h = ctx.raw.x;
-                            const s = scopes[ctx.raw.y];
-                            const v = ctx.raw.v;
-                            return `${s} — ${h}:00 → ${v} created`;
+                    options: {
+                        responsive: true,
+                        aspectRatio: 2.4,
+                        scales: {
+                            x: {
+                                type: "linear",
+                                offset: true,
+                                position: "top",
+                                ticks: {
+                                    callback: v => v + ":00",
+                                    maxRotation: 0,
+                                    autoSkip: true
+                                },
+                                grid: {display: false}
+                            },
+                            y: {
+                                type: "linear",
+                                offset: true,
+                                ticks: {
+                                    callback: v => scopes[v] || ""
+                                },
+                                grid: {display: false}
+                            }
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    title: () => "",
+                                    label: ctx => {
+                                        const h = ctx.raw.x;
+                                        const s = scopes[ctx.raw.y];
+                                        const v = ctx.raw.v;
+                                        return `${s} — ${h}:00 → ${v} created`;
+                                    }
+                                }
+                            }
                         }
                     }
-                }
+                });
             }
-        }
-    });
-}
 
 
             function renderScopePie(agg) {
@@ -429,7 +346,7 @@ function renderScopeHeatmap(beans) {
                 window._qualifierDoughnut = new Chart(ctx, {type: "doughnut", data: {labels, datasets: [{data, backgroundColor: labels.map((_, i) => `hsl(${i * 50 % 360} 75% 55%)`)}]}, options: {responsive: true, plugins: {legend: {position: "right"}}}});
             }
 
-        // --- Event Charts ---
+            // --- Event Charts ---
             function renderEventsTimeline(events) {
                 const counts = {};
                 events.forEach(e => {
@@ -488,10 +405,10 @@ function renderScopeHeatmap(beans) {
                 window._topObservers = new Chart(ctx, {type: "bar", data: {labels, datasets: [{label: "Notifications", data, backgroundColor: data.map((_, i) => `rgba(99,102,241,${0.95 - i * 0.06})`)}]}, options: {indexAxis: 'y', responsive: true, plugins: {legend: {display: false}}, scales: {x: {beginAtZero: true}}}});
             }
 
-        // --- Initial Render ---
+            // --- Initial Render ---
             renderAll().catch(err => {
                 console.error("Failed to render dashboard", err);
-                document.getElementById("scopeCards").innerHTML = "<div style='color:red'>Failed to load dashboard; see console.</div>";
+                document.getElementById("summaryCards").innerHTML = "<div style='color:red'>Failed to load dashboard; see console.</div>";
             });
         </script>
     </body>

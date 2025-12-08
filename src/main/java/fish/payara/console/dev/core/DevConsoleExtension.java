@@ -41,10 +41,16 @@ package fish.payara.console.dev.core;
 import fish.payara.console.dev.model.ProducerInfo;
 import jakarta.enterprise.context.spi.CreationalContext;
 import jakarta.enterprise.event.Observes;
+import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.spi.*;
+import jakarta.enterprise.util.AnnotationLiteral;
 import jakarta.ws.rs.ext.ExceptionMapper;
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -90,7 +96,7 @@ public class DevConsoleExtension implements Extension {
         });
     }
 
-    <T> void onProcessAnnotatedType(@Observes ProcessAnnotatedType<T> pat) {
+    <T> void onProcessAnnotatedType(@Observes ProcessAnnotatedType<T> pat, BeanManager beanManager) {
         if (pat.getAnnotatedType().isAnnotationPresent(jakarta.decorator.Decorator.class)) {
             registry.addDecorator(pat.getAnnotatedType());
         }
@@ -182,6 +188,71 @@ public class DevConsoleExtension implements Extension {
         });
     }
 
+    
+void recordInterceptorsChain(
+        @Observes AfterDeploymentValidation adv, 
+        BeanManager bm) {
+
+    for (Bean<?> bean : bm.getBeans(Object.class, new AnnotationLiteral<Any>() {})) {
+
+        Class<?> beanClass = bean.getBeanClass();
+
+        // 1. Collect class-level interceptor bindings
+        List<Annotation> classBindings = new ArrayList<>();
+        for (Annotation a : beanClass.getAnnotations()) {
+            if (bm.isInterceptorBinding(a.annotationType())) {
+                classBindings.add(a);
+            }
+        }
+
+        // 2. Process each method separately
+        for (Method method : beanClass.getDeclaredMethods()) {
+
+            // Skip synthetic / bridge methods
+            if (method.isSynthetic() || method.isBridge()) continue;
+
+            // Collect method-level bindings
+            List<Annotation> methodBindings = new ArrayList<>();
+            for (Annotation a : method.getAnnotations()) {
+                if (bm.isInterceptorBinding(a.annotationType())) {
+                    methodBindings.add(a);
+                }
+            }
+
+            // Combine class + method
+            List<Annotation> allBindings = new ArrayList<>(classBindings);
+            allBindings.addAll(methodBindings);
+
+            if (allBindings.isEmpty()) {
+                registry.getInterceptorChains().put(
+                    beanClass.getName() + "#" + method.getName(),
+                    List.of()
+                );
+                continue;
+            }
+
+            // Safe during AfterDeploymentValidation
+            List<Interceptor<?>> resolved = bm.resolveInterceptors(
+                InterceptionType.AROUND_INVOKE,
+                allBindings.toArray(new Annotation[0])
+            );
+
+            registry.getInterceptorChains().put(
+                beanClass.getName() + "#" + method.getName(),
+                resolved.stream().map(Interceptor::getBeanClass).toList()
+            );
+        }
+    }
+}
+
+    public List<Class<?>> getChainFor(Class<?> beanClass) {
+        return registry
+                .getInterceptorChains()
+                .getOrDefault(beanClass, List.of());
+    }
+
+  
+
     public static Class<? extends Throwable> getExceptionType(Class<?> mapperClass) {
         for (Type type : mapperClass.getGenericInterfaces()) {
             if (type instanceof ParameterizedType parameterizedType) {
@@ -208,6 +279,21 @@ public class DevConsoleExtension implements Extension {
 //        if (!isFromCurrentWar(clazz)) {
 //            return; // skip external classed
 //        } 
+
+    if (pb.getAnnotated().isAnnotationPresent(jakarta.decorator.Decorator.class)) {
+
+        // CDI guarantees exactly one delegate injection point per decorator
+        for (InjectionPoint ip : pb.getBean().getInjectionPoints()) {
+            if (ip.isDelegate()) {
+                Type decoratedType = ip.getType();
+
+                registry.recordDecoratorForBean(
+                    ((Class<?>) decoratedType),
+                    pb.getBean().getBeanClass()
+                );
+            }
+        }
+    }
         registry.registerBean(pb.getBean());//pb.getBean().getBeanClass()
     }
 
@@ -215,7 +301,7 @@ public class DevConsoleExtension implements Extension {
         registry.registerObserver(pom.getObserverMethod(), pom.getAnnotatedMethod());
     }
 
-    <T> void onProcessInjectionTarget(@Observes ProcessInjectionTarget<T> pit) {
+    <T> void onProcessInjectionTarget(@Observes ProcessInjectionTarget<T> pit, BeanManager bm) {
         if (!registry.enabled()) {
             return;
         }
@@ -224,7 +310,7 @@ public class DevConsoleExtension implements Extension {
 
         InjectionTarget<T> original = pit.getInjectionTarget();
 
-        pit.setInjectionTarget(new WrappingInjectionTarget<>(beanClass, original, registry));
+        pit.setInjectionTarget(new WrappingInjectionTarget<>(beanClass, original, registry, bm));
     }
 
     void afterBeanDiscovery(@Observes AfterBeanDiscovery abd, BeanManager bm) {
@@ -238,6 +324,7 @@ public class DevConsoleExtension implements Extension {
         if (!registry.enabled()) {
             return;
         }
+        recordInterceptorsChain(adv, bm);
         registry.finishModel(bm);
     }
 

@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <link rel="stylesheet" type="text/css" href="../css/common-dashboard.css">
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Observers Dashboard — CDI Dev Mode</title>
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    </head>
+
+    <body>
+        <div class="page">
+            <h1>CDI Observers</h1>
+
+            <div class="controls">
+                <input id="q" type="search" placeholder="Filter observers..." />
+                <select id="eventTypeFilter"><option value="">All event types</option></select>
+                <button id="refresh">Refresh</button>
+            </div>
+
+            <div class="cards-row" id="summaryCards"></div>
+
+            <div class="grid">
+
+                <div class="card">
+                    <div class="small">Observers by Event Type</div>
+                    <canvas id="eventTypeChart" height="220"></canvas>
+                </div>
+
+                <div class="card">
+                    <div class="small">Observers by Bean Class</div>
+                    <canvas id="beanClassChart" height="220"></canvas>
+                </div>
+
+            </div>
+
+            <div class="card full-width">
+                <div class="small">All Observers</div>
+                <div class="observers-wrapper">
+                    <table id="observersTable">
+                        <thead>
+                            <tr>
+                                <th>Bean Class</th>
+                                <th>Event Type</th>
+                                <th>Qualifiers</th>
+                                <th>Reception</th>
+                                <th>Transaction Phase</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+        <script>
+
+            function shorten(n) {
+                return n.split(".").slice(-1)[0];
+            }
+
+            async function fetchAndRender() {
+                try {
+                    const res = await fetch("../resources/dev/observers");
+                    const data = await res.json();
+                    window._observersRaw = data;
+                    renderAll(data);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            function renderAll(items) {
+                const q = document.getElementById("q").value.toLowerCase().trim();
+                const typeFilter = document.getElementById("eventTypeFilter").value;
+
+                const filtered = items.filter(it => {
+                    if (typeFilter && it.eventTypeName !== typeFilter)
+                        return false;
+                    if (!q)
+                        return true;
+
+                    return it.beanClass.toLowerCase().includes(q)
+                            || it.eventTypeName.toLowerCase().includes(q)
+                            || it.qualifiers.join(",").toLowerCase().includes(q)
+                            || it.reception.toLowerCase().includes(q)
+                            || it.transactionPhase.toLowerCase().includes(q);
+                });
+
+                populateEventTypeFilter(items);
+                renderSummary(items);
+                renderEventTypeChart(filtered);
+                renderBeanClassChart(filtered);
+                renderTable(filtered);
+            }
+
+            function populateEventTypeFilter(items) {
+                const sel = document.getElementById("eventTypeFilter");
+                const types = Array.from(new Set(items.map(i => i.eventTypeName)));
+
+                sel.innerHTML =
+                        '<option value="">All event types</option>' +
+                        types.map(t => `<option value="${t}">${t}</option>`).join('');
+            }
+
+            function renderSummary(items) {
+                const totalObservers = items.length;
+                const uniqueEvents = new Set(items.map(i => i.eventTypeName)).size;
+                const qualifierCount = items.reduce((s, i) => s + i.qualifiers.length, 0);
+
+                const cards = [
+                    {label: "Observers", value: totalObservers},
+                    {label: "Event Types", value: uniqueEvents},
+                    {label: "Qualifier Count", value: qualifierCount}
+                ];
+
+                const colors = [
+                    'linear-gradient(135deg,#6366f1,#3b82f6)',
+                    'linear-gradient(135deg,#06b6d4,#0ea5e9)',
+                    'linear-gradient(135deg,#34d399,#10b981)'
+                ];
+
+                const c = document.getElementById("summaryCards");
+                c.innerHTML = "";
+
+                cards.forEach((card, i) => {
+                    const d = document.createElement("div");
+                    d.className = "stat";
+                    d.style.background = colors[i];
+                    d.innerHTML = `<div class="label">${card.label}</div><div class="value">${card.value}</div>`;
+                    c.appendChild(d);
+                });
+            }
+
+            function renderEventTypeChart(items) {
+                const map = {};
+                items.forEach(it => map[it.eventTypeName] = (map[it.eventTypeName] || 0) + 1);
+
+                const labels = Object.keys(map).map(shorten);
+                const data = Object.values(map);
+
+                const ctx = document.getElementById("eventTypeChart").getContext("2d");
+                if (window._eventTypeChart)
+                    window._eventTypeChart.destroy();
+
+                window._eventTypeChart = new Chart(ctx, {
+                    type: "bar",
+                    data: {labels, datasets: [{label: "Observers", data}]},
+                    options: {responsive: true, scales: {y: {beginAtZero: true}}}
+                });
+            }
+
+            function renderBeanClassChart(items) {
+                const map = {};
+                items.forEach(it => map[it.beanClass] = (map[it.beanClass] || 0) + 1);
+
+                const labels = Object.keys(map).map(shorten);
+                const data = Object.values(map);
+
+                const ctx = document.getElementById("beanClassChart").getContext("2d");
+                if (window._beanClassChart)
+                    window._beanClassChart.destroy();
+
+                window._beanClassChart = new Chart(ctx, {
+                    type: "bar",
+                    data: {labels, datasets: [{label: "Observers", data}]},
+                    options: {responsive: true, scales: {y: {beginAtZero: true}}}
+                });
+            }
+
+            function renderTable(items) {
+                const tb = document.querySelector("#observersTable tbody");
+                tb.innerHTML = "";
+
+                items.forEach(it => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                    <td>${shorten(it.beanClass)}</td>
+                    <td>${shorten(it.eventTypeName)}</td>
+                    <td>${it.qualifiers.length ? it.qualifiers.join("<br>") : "—"}</td>
+                    <td>${it.reception}</td>
+                    <td>${it.transactionPhase}</td>
+                `;
+
+                    tr.style.cursor = "pointer";
+                    tr.addEventListener("click", () => {
+                        const enc = encodeURIComponent(it.beanClass);
+                        window.location.href = "observer-dashboard.html?class=" + enc;
+                    });
+
+                    tb.appendChild(tr);
+                });
+            }
+
+            document.getElementById("q").addEventListener("input", () => renderAll(window._observersRaw || []));
+            document.getElementById("eventTypeFilter").addEventListener("change", () => renderAll(window._observersRaw || []));
+            document.getElementById("refresh").addEventListener("click", fetchAndRender);
+
+            fetchAndRender();
+
+        </script>
+
+    </body>
+</html>

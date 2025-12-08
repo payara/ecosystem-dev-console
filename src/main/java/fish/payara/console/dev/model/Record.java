@@ -46,12 +46,23 @@ import java.time.Instant;
  */
 public class Record {
 
+    protected String key;
     protected final Instant timestamp;
     protected final long durationMs;
 
     public Record(Instant timestamp, long durationMs) {
         this.timestamp = timestamp;
         this.durationMs = durationMs;
+    }
+
+    public Record(String key, Instant timestamp, long durationMs) {
+        this.key = key;
+        this.timestamp = timestamp;
+        this.durationMs = durationMs;
+    }
+
+    public String getKey() {
+        return key;
     }
 
     public Instant getTimestamp() {

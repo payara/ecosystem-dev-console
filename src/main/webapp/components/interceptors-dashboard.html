@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <link rel="stylesheet" type="text/css" href="../css/common-dashboard.css">
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Interceptors Dashboard — CDI Dev Mode</title>
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    </head>
+
+    <body>
+        <div class="page">
+            <h1>CDI Interceptors</h1>
+
+            <div class="controls">
+                <div style="margin-left:auto" class="row">
+                    <input id="q" type="search" placeholder="Filter by class or binding" />
+                    <select id="scopeFilter"><option value="">All scopes</option></select>
+                    <button id="refresh">Refresh</button>
+                </div>
+            </div>
+
+            <div class="cards-row" id="summaryCards"></div>
+
+            <div class="grid">
+
+                <div class="card">
+                    <div class="small">Invoked Count — Top Interceptors</div>
+                    <canvas id="invokedBar" height="220"></canvas>
+                </div>
+
+                <div class="card">
+                    <div class="small">Binding Usage</div>
+                    <canvas id="bindingUsage" height="220"></canvas>
+                </div>
+
+                <div class="card">
+                    <div class="small">Priority Distribution</div>
+                    <canvas id="priorityBar" height="260"></canvas>
+                </div>
+
+                <div class="card">
+                    <div class="small">Created vs Invoked Summary</div>
+                    <canvas id="createdVsInvoked" height="260"></canvas>
+                </div>
+
+                <div class="card full-width">
+                    <div class="small">All Interceptors</div>
+
+                    <div class="interceptors-wrapper">
+                        <table id="interceptorsTable">
+                            <thead>
+                                <tr>
+                                    <th>Class</th>
+                                    <th>Bindings</th>
+                                    <th>Priority</th>
+                                    <th>Created</th>
+                                    <th>Invoked</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+        <script>
+
+            /* -----------------------------
+             SHORTENING HELPERS
+             ----------------------------- */
+
+            function shortenClass(name) {
+                return name.split(".").pop();
+            }
+
+            function shortenBinding(name) {
+                return name.split(".").pop();
+            }
+
+            /* force truncated labels + short tooltip titles */
+            function chartOptions() {
+                return {
+                    responsive: true,
+                    plugins: {
+                        legend: {display: false},
+                        tooltip: {
+                            callbacks: {
+                                title: (ctx) => ctx[0].label
+                            }
+                        }
+                    },
+                    scales: {y: {beginAtZero: true}}
+                };
+            }
+
+            /* -----------------------------
+             FETCH + FILTER
+             ----------------------------- */
+
+            async function fetchAndRender() {
+                try {
+                    const res = await fetch("../resources/dev/interceptors");
+                    const data = await res.json();
+                    window._interceptorRaw = data;
+                    renderAll(data);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            function renderAll(items) {
+                const q = document.getElementById("q").value.toLowerCase().trim();
+                const scope = document.getElementById("scopeFilter").value;
+
+                const filtered = items.filter(it => {
+                    if (scope && it.scope !== scope)
+                        return false;
+                    if (!q)
+                        return true;
+                    return it.className.toLowerCase().includes(q)
+                            || it.interceptorBindings.join(",").toLowerCase().includes(q);
+                });
+
+                renderSummary(items);
+                renderInvokedChart(filtered);
+                renderBindingUsage(items);
+                renderPriorityChart(items);
+                renderCreatedVsInvoked(items);
+                populateScopeFilter(items);
+                renderTable(filtered);
+            }
+
+            /* -----------------------------
+             SUMMARY CARDS
+             ----------------------------- */
+
+            function renderSummary(items) {
+                const total = items.length;
+                const totalCreated = items.reduce((s, i) => s + (i.createdCount || 0), 0);
+                const totalInvoked = items.reduce((s, i) => s + (i.invokedCount || 0), 0);
+
+                const cards = [
+                    {label: "Interceptors", value: total},
+                    {label: "Total Created", value: totalCreated},
+                    {label: "Total Invoked", value: totalInvoked}
+                ];
+
+                const colors = [
+                    'linear-gradient(135deg,#6a11cb,#2575fc)',
+                    'linear-gradient(135deg,#06b6d4,#3b82f6)',
+                    'linear-gradient(135deg,#34d399,#10b981)'
+                ];
+
+                const container = document.getElementById("summaryCards");
+                container.innerHTML = "";
+
+                cards.forEach((c, i) => {
+                    const div = document.createElement("div");
+                    div.className = "stat";
+                    div.style.background = colors[i];
+                    div.innerHTML = `<div class="label">${c.label}</div><div class="value">${c.value}</div>`;
+                    container.appendChild(div);
+                });
+            }
+
+            /* -----------------------------
+             CHARTS
+             ----------------------------- */
+
+            function renderInvokedChart(items) {
+                const sorted = items.slice()
+                        .sort((a, b) => (b.invokedCount || 0) - (a.invokedCount || 0))
+                        .slice(0, 10);
+
+                const labels = sorted.map(x => shortenClass(x.className));
+                const data = sorted.map(x => x.invokedCount || 0);
+
+                const ctx = document.getElementById("invokedBar").getContext("2d");
+                if (window._invokedBar)
+                    window._invokedBar.destroy();
+
+                window._invokedBar = new Chart(ctx, {
+                    type: "bar",
+                    data: {labels, datasets: [{label: "Invoked", data}]},
+                    options: chartOptions()
+                });
+            }
+
+// helper – returns simple name only
+            function shortenBinding(name) {
+                return name.split(".").pop();
+            }
+
+            function renderBindingUsage(items) {
+                const counter = {};
+                items.forEach(i =>
+                    i.interceptorBindings.forEach(b => {
+                        counter[b] = (counter[b] || 0) + 1;
+                    })
+                );
+                // ❌ before: const labels = Object.keys(counter);
+                // ✅ after – use simple names only
+                const labels = Object.keys(counter).map(shortenBinding);
+                const data = Object.values(counter);
+
+                const ctx = document.getElementById("bindingUsage").getContext("2d");
+                if (window._bindingUsage)
+                    window._bindingUsage.destroy();
+
+                window._bindingUsage = new Chart(ctx, {
+                    type: "bar",
+                    data: {labels, datasets: [{label: "Usage", data}]},
+                    options: {
+                        responsive: true,
+                        plugins: {legend: {display: false}},
+                        scales: {y: {beginAtZero: true}}
+                    }
+                });
+            }
+
+
+            function renderPriorityChart(items) {
+                const labels = items.map(i => shortenClass(i.className));
+                const data = items.map(i => i.priority || 0);
+
+                const ctx = document.getElementById("priorityBar").getContext("2d");
+                if (window._priorityBar)
+                    window._priorityBar.destroy();
+
+                window._priorityBar = new Chart(ctx, {
+                    type: "bar",
+                    data: {labels, datasets: [{label: "Priority", data}]},
+                    options: chartOptions()
+                });
+            }
+
+            function renderCreatedVsInvoked(items) {
+                const labels = items.map(i => shortenClass(i.className));
+                const created = items.map(i => i.createdCount || 0);
+                const invoked = items.map(i => i.invokedCount || 0);
+
+                const ctx = document.getElementById("createdVsInvoked").getContext("2d");
+                if (window._cvi)
+                    window._cvi.destroy();
+
+                window._cvi = new Chart(ctx, {
+                    type: "bar",
+                    data: {
+                        labels,
+                        datasets: [
+                            {label: "Created", data: created},
+                            {label: "Invoked", data: invoked}
+                        ]
+                    },
+                    options: chartOptions()
+                });
+            }
+
+            /* -----------------------------
+             TABLE + SCOPE FILTER
+             ----------------------------- */
+
+            function populateScopeFilter(items) {
+                const sel = document.getElementById("scopeFilter");
+                const scopes = Array.from(new Set(items.map(i => i.scope).filter(Boolean)));
+
+                sel.innerHTML = '<option value="">All scopes</option>' +
+                        scopes.map(s => `<option value="${s}">${s}</option>`).join('');
+            }
+
+            function renderTable(items) {
+                const tbody = document.querySelector("#interceptorsTable tbody");
+                tbody.innerHTML = "";
+
+                items.forEach(it => {
+                    const tr = document.createElement("tr");
+
+                    tr.innerHTML = `
+                        <td>${shortenClass(it.className)}</td>
+                        <td>${it.interceptorBindings.map(shortenBinding).join("<br>")}</td>
+                        <td>${it.priority}</td>
+                        <td>${it.createdCount}</td>
+                        <td>${it.invokedCount}</td>
+                    `;
+
+                    tr.style.cursor = "pointer";
+                    tr.addEventListener("click", () => {
+                        const enc = encodeURIComponent(it.className);
+                        window.location.href = `components/interceptor-dashboard.html?class=${enc}`;
+                    });
+
+                    tbody.appendChild(tr);
+                });
+            }
+
+            /* -----------------------------
+             EVENTS + INITIAL LOAD
+             ----------------------------- */
+
+            document.getElementById("q")
+                    .addEventListener("input", () => renderAll(window._interceptorRaw || []));
+
+            document.getElementById("scopeFilter")
+                    .addEventListener("change", () => renderAll(window._interceptorRaw || []));
+
+            document.getElementById("refresh").addEventListener("click", fetchAndRender);
+
+            fetchAndRender();
+
+        </script>
+
+    </body>
+</html>

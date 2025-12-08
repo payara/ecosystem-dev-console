@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <link rel="stylesheet" type="text/css" href="../css/common-dashboard.css">
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Scoped Beans — CDI Dev Mode</title>
+    </head>
+
+    <body>
+        <div class="page">
+
+            <h1>CDI Scoped Beans</h1>
+
+            <div class="controls">
+                <input id="q" type="search" placeholder="Filter by class, scope or qualifier" />
+                <button id="refresh">Refresh</button>
+            </div>
+
+            <div class="cards-row" id="summaryCards"></div>
+
+            <div class="grid">
+                <div class="card full-width">
+                    <div class="small">All Scoped Beans</div>
+                    <div class="beans-wrapper">
+                        <table id="beansTable">
+                            <thead>
+                                <tr>
+                                    <th>Scope</th>
+                                    <th>Class</th>
+                                    <th>Qualifiers</th>
+                                    <th>Created</th>
+                                    <th>Current</th>
+                                    <th>Destroyed</th>
+                                    <th>Max</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <script>
+            async function fetchData() {
+                try {
+                    const r = await fetch("../resources/dev/scoped-beans");
+                    const data = await r.json();
+                    window._beansRaw = data;
+                    renderAll(data);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            function shorten(n) {
+                return n.split(".").slice(-2).join(".");
+            }
+
+            function renderAll(items) {
+                const q = document.getElementById("q").value.toLowerCase().trim();
+
+                const filtered = items.filter(it => {
+                    if (!q)
+                        return true;
+                    return it.className.toLowerCase().includes(q)
+                            || it.scope.toLowerCase().includes(q)
+                            || it.qualifiers.join(",").toLowerCase().includes(q);
+                });
+
+                renderSummary(items);
+                renderTable(filtered);
+            }
+
+            function renderSummary(items) {
+
+                const totalBeans = items.length;
+
+                const scopes = new Set(items.map(i => i.scope));
+                const uniqueScopes = scopes.size;
+
+                const totalCreated = items.reduce((s, i) => s + (i.createdCount || 0), 0);
+
+                const cards = [
+                    {label: "Scoped Beans", value: totalBeans},
+                    {label: "Unique Scopes", value: uniqueScopes},
+                    {label: "Total Created Instances", value: totalCreated}
+                ];
+
+                const colors = [
+                    'linear-gradient(135deg,#6a11cb,#2575fc)',
+                    'linear-gradient(135deg,#34d399,#10b981)',
+                    'linear-gradient(135deg,#f59e0b,#ef4444)'
+                ];
+
+                const box = document.getElementById("summaryCards");
+                box.innerHTML = "";
+
+                cards.forEach((c, i) => {
+                    const d = document.createElement("div");
+                    d.className = "stat";
+                    d.style.background = colors[i];
+                    d.innerHTML = `<div class="label">${c.label}</div>
+                               <div class="value">${c.value}</div>`;
+                    box.appendChild(d);
+                });
+            }
+
+            function renderTable(items) {
+                const tbody = document.querySelector("#beansTable tbody");
+                tbody.innerHTML = "";
+
+                items.forEach(it => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                    <td>${it.scope}</td>
+                    <td>${it.className}</td>
+                    <td>${it.qualifiers.join("<br>")}</td>
+                    <td>${it.createdCount}</td>
+                    <td>${it.currentCount}</td>
+                    <td>${it.destroyedCount}</td>
+                    <td>${it.maxCount}</td>
+                `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            document.getElementById("q").addEventListener("input", () => renderAll(window._beansRaw || []));
+            document.getElementById("refresh").addEventListener("click", fetchData);
+
+            fetchData();
+        </script>
+
+    </body>
+</html>

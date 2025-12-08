@@ -38,6 +38,7 @@
  */
 package fish.payara.console.dev.core;
 
+import static fish.payara.console.dev.core.DevConsoleExtension.registry;
 import fish.payara.console.dev.model.Record;
 import fish.payara.console.dev.model.InstanceStats;
 import fish.payara.console.dev.dto.BeanGraphDTO;
@@ -46,8 +47,15 @@ import fish.payara.console.dev.model.EventRecord;
 import fish.payara.console.dev.model.InterceptorInfo;
 import fish.payara.console.dev.model.ProducerInfo;
 import fish.payara.console.dev.dto.RestMethodDTO;
+import fish.payara.console.dev.model.AuditInfo;
+import jakarta.annotation.security.DenyAll;
+import jakarta.annotation.security.PermitAll;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.inject.spi.*;
+import jakarta.ws.rs.HttpMethod;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
 import java.lang.annotation.Annotation;
 import java.time.Instant;
 import java.util.*;
@@ -62,7 +70,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 public class DevConsoleRegistry {
 
     private final List<ProducerInfo> producers = new ArrayList<>();
-    private final Map<Object, Set<Annotation>> securityAnnotations = new ConcurrentHashMap<>();
+    private final Map<Object, AuditInfo> securityAnnotations = new ConcurrentHashMap<>();
     private final List<DecoratorInfo> decorators = new ArrayList<>();
     private final List<InterceptorInfo> interceptors = new ArrayList<>();
 
@@ -81,10 +89,34 @@ public class DevConsoleRegistry {
     private static final int DEFAULT_EVENT_HISTORY = 1000;
     private final Deque<EventRecord> recentEvents = new ConcurrentLinkedDeque<>();
 
-    private final ConcurrentHashMap<Class<?>, InstanceStats> statsMap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, InstanceStats> statsMap = new ConcurrentHashMap<>();
+
+    // Map<BDA-ID, Set<Class Name>>
+    private final Map<String, Set<String>> beanArchives = new ConcurrentHashMap<>();
+
+    private final Map<String, List<Class<?>>> interceptorChains = new ConcurrentHashMap<>();
+
+    private final Map<String, List<Class<?>>> decoratorChains = new ConcurrentHashMap<>();
+
+    public void recordDecoratorForBean(Class<?> beanClass, Class<?> decoratorClass) {
+        decoratorChains.computeIfAbsent(beanClass.getName(), k -> new ArrayList<>())
+                .add(decoratorClass);
+    }
+
+    public Map<String, List<Class<?>>> getDecoratorChains() {
+        return decoratorChains;
+    }
+
+    public List<Class<?>> getDecoratorChain(Class<?> beanClass) {
+        return decoratorChains.getOrDefault(beanClass.getName(), List.of());
+    }
+
+    public Map<String, List<Class<?>>> getInterceptorChains() {
+        return interceptorChains;
+    }
 
     public void recordCreation(Class<?> beanClass, long ms) {
-        InstanceStats stats = statsMap.computeIfAbsent(beanClass, c -> new InstanceStats());
+        InstanceStats stats = statsMap.computeIfAbsent(beanClass.getName(), c -> new InstanceStats());
         int live = stats.getCurrentCount().incrementAndGet();
         stats.getCreatedCount().incrementAndGet();
         stats.getLastCreated().set(Instant.now());
@@ -92,8 +124,26 @@ public class DevConsoleRegistry {
         stats.getCreationRecords().add(new Record(Instant.now(), ms));
     }
 
+    public void recordInvocation(Class<?> beanClass, long ms) {
+        InstanceStats stats = statsMap.computeIfAbsent(beanClass.getName(), c -> new InstanceStats());
+        stats.getInvocationCount().incrementAndGet();
+
+        Instant now = Instant.now();
+        stats.getLastInvoked().set(now);
+        stats.getInvocationRecords().add(new Record(now, ms));
+    }
+
+    public void recordInvocation(Class<?> beanClass, String methodName, long ms) {
+        InstanceStats stats = statsMap.computeIfAbsent(beanClass.getName(), c -> new InstanceStats());
+        stats.getInvocationCount().incrementAndGet();
+
+        Instant now = Instant.now();
+        stats.getLastInvoked().set(now);
+        stats.getInvocationRecords().add(new Record(methodName, now, ms));
+    }
+
     public void recordDestruction(Class<?> beanClass, long ms) {
-        InstanceStats stats = statsMap.get(beanClass);
+        InstanceStats stats = statsMap.get(beanClass.getName());
         if (stats != null) {
             stats.getCurrentCount().decrementAndGet();
             stats.getDestroyedCount().incrementAndGet();
@@ -102,6 +152,10 @@ public class DevConsoleRegistry {
     }
 
     public InstanceStats getStats(Class<?> beanClass) {
+        return statsMap.getOrDefault(beanClass.getName(), new InstanceStats());
+    }
+
+    public InstanceStats getStats(String beanClass) {
         return statsMap.getOrDefault(beanClass, new InstanceStats());
     }
 
@@ -119,6 +173,16 @@ public class DevConsoleRegistry {
 
     public int getTotalCreated(Class<?> beanClass) {
         return getStats(beanClass).getCreatedCount().get();
+    }
+
+    public void addBeanArchive(String archiveId, String className) {
+        beanArchives
+                .computeIfAbsent(archiveId, x -> ConcurrentHashMap.newKeySet())
+                .add(className);
+    }
+
+    public Map<String, Set<String>> getBeanArchives() {
+        return beanArchives;
     }
 
     public void addDecorator(AnnotatedType decorator) {
@@ -144,6 +208,7 @@ public class DevConsoleRegistry {
     public List<ProducerInfo> getProducers() {
         return producers;
     }
+
     public Optional<ProducerInfo> findProducerForBean(Class<?> beanClass) {
         return producers.stream()
                 .filter(p -> p.getProducedType().equals(beanClass.getName()))
@@ -151,39 +216,54 @@ public class DevConsoleRegistry {
     }
 
     public void addSecurityAnnotation(Object element) {
-        Set<Annotation> annotations = new HashSet<>();
-        if (element instanceof jakarta.enterprise.inject.spi.AnnotatedType) {
-            jakarta.enterprise.inject.spi.AnnotatedType<?> at = (jakarta.enterprise.inject.spi.AnnotatedType<?>) element;
-            for (Annotation ann : at.getAnnotations()) {
-                if (ann.annotationType() == jakarta.annotation.security.RolesAllowed.class
-                        || ann.annotationType() == jakarta.annotation.security.PermitAll.class
-                        || ann.annotationType() == jakarta.annotation.security.DenyAll.class) {
-                    annotations.add(ann);
-                }
-            }
-        } else if (element instanceof jakarta.enterprise.inject.spi.AnnotatedMethod) {
-            jakarta.enterprise.inject.spi.AnnotatedMethod<?> am = (jakarta.enterprise.inject.spi.AnnotatedMethod<?>) element;
-            for (Annotation ann : am.getAnnotations()) {
-                if (ann.annotationType() == jakarta.annotation.security.RolesAllowed.class
-                        || ann.annotationType() == jakarta.annotation.security.PermitAll.class
-                        || ann.annotationType() == jakarta.annotation.security.DenyAll.class) {
-                    annotations.add(ann);
-                }
+        Set<Annotation> security = new HashSet<>();
+        Set<Annotation> httpMethods = new HashSet<>();
+        Set<Annotation> paths = new HashSet<>();
+        Set<Annotation> produces = new HashSet<>();
+
+        Collection<Annotation> all;
+
+        if (element instanceof jakarta.enterprise.inject.spi.AnnotatedType<?> at) {
+            all = at.getAnnotations();
+        } else if (element instanceof jakarta.enterprise.inject.spi.AnnotatedMethod<?> am) {
+            all = am.getAnnotations();
+        } else {
+            return;
+        }
+
+        for (Annotation ann : all) {
+            Class<? extends Annotation> type = ann.annotationType();
+
+            // 1) SECURITY
+            if (type == RolesAllowed.class
+                    || type == PermitAll.class
+                    || type == DenyAll.class) {
+                security.add(ann);
+            } // 2) REAL HTTP METHODS (e.g. @GET, @POST ...)
+            else if (type.isAnnotationPresent(HttpMethod.class)) {
+                httpMethods.add(ann);
+            } // 3) PATH
+            else if (type == Path.class) {
+                paths.add(ann);
+            } // 4) PRODUCES
+            else if (type == Produces.class) {
+                produces.add(ann);
             }
         }
-        if (!annotations.isEmpty()) {
-            securityAnnotations.put(element, annotations);
+
+        if (!security.isEmpty() || !httpMethods.isEmpty()
+                || !paths.isEmpty() || !produces.isEmpty()) {
+            securityAnnotations.put(element, new AuditInfo(security, httpMethods, paths, produces));
         }
     }
 
-    public Map<Object, Set<Annotation>> getSecurityAnnotations() {
+    public Map<Object, AuditInfo> getSecurityAnnotations() {
         return securityAnnotations;
     }
 
     public boolean enabled() {
         return enabled;
     }
-
 
     void seenType(AnnotatedType<?> at) {
         if (at != null && at.getJavaClass() != null) {
@@ -251,9 +331,10 @@ public class DevConsoleRegistry {
         return restExceptionMappers;
     }
 
-   /**
-     * Preferred register method used at ProcessObserverMethod time: supplies both the
-     * ObserverMethod and the AnnotatedMethod (if available) so we can remember the method name.
+    /**
+     * Preferred register method used at ProcessObserverMethod time: supplies
+     * both the ObserverMethod and the AnnotatedMethod (if available) so we can
+     * remember the method name.
      */
     void registerObserver(ObserverMethod<?> om, jakarta.enterprise.inject.spi.AnnotatedMethod<?> annotatedMethod) {
         observers.add(om);
@@ -313,8 +394,10 @@ public class DevConsoleRegistry {
     }
 
     /**
-     * Register a fired event into the in-memory history.  The caller (usually an observer bean) should compute
-     * the list of resolved observer method strings (bean#method) before calling this.
+     * Register a fired event into the in-memory history. The caller (usually an
+     * observer bean) should compute the list of resolved observer method
+     * strings (bean#method) before calling this.
+     *
      * @param eventType
      * @param firedBy
      * @param timestamp
@@ -334,10 +417,13 @@ public class DevConsoleRegistry {
     }
 
     /**
-     * Resolve candidate observers for the given event type name using the observer registry collected during bootstrap.
-     * This performs a simple name-equality match; you may extend it to handle generics/assignability if required.
+     * Resolve candidate observers for the given event type name using the
+     * observer registry collected during bootstrap. This performs a simple
+     * name-equality match; you may extend it to handle generics/assignability
+     * if required.
+     *
      * @param eventTypeName
-     * @return 
+     * @return
      */
     public List<String> resolveObserversFor(String eventTypeName) {
         List<String> matches = new ArrayList<>();

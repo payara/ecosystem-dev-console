@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <link rel="stylesheet" type="text/css" href="../css/common-dashboard.css">
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>CDI Extensions — CDI Dev Mode</title>
+    </head>
+
+    <body>
+
+        <div class="page">
+            <h1>CDI Extensions</h1>
+
+            <div class="controls">
+                <input id="q" type="search" placeholder="Search extensions…" />
+                <button id="refresh">Refresh</button>
+            </div>
+
+            <div class="cards-row" id="summaryCards"></div>
+
+            <div class="extensions-wrapper">
+                <table id="extTable">
+                    <thead>
+                        <tr>
+                            <th>Extension Class</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+        </div>
+
+        <script>
+
+            async function fetchAndRender() {
+                try {
+                    const res = await fetch("../resources/dev/extension");
+                    const data = await res.json();
+                    window._extRaw = data;
+                    renderAll(data);
+                } catch (e) {
+                    console.error("Error fetching extension data:", e);
+                }
+            }
+
+            function renderAll(items) {
+                const q = document.getElementById("q").value.toLowerCase().trim();
+
+                const filtered = items.filter(ext =>
+                    ext.toLowerCase().includes(q)
+                );
+
+                renderSummary(items);
+                renderTable(filtered);
+            }
+
+            function renderSummary(items) {
+                const total = items.length;
+
+                const cardContainer = document.getElementById("summaryCards");
+                cardContainer.innerHTML = "";
+
+                const card = document.createElement("div");
+                card.className = "stat";
+                card.style.background = 'linear-gradient(135deg,#6a11cb,#2575fc)';
+                card.innerHTML = `
+                <div class="label">Total Extensions</div>
+                <div class="value" style="font-size:1.5rem;font-weight:800">${total}</div>
+            `;
+
+                cardContainer.appendChild(card);
+            }
+
+            function renderTable(items) {
+                const tbody = document.querySelector("#extTable tbody");
+                tbody.innerHTML = "";
+
+                items.forEach(ext => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `<td>${ext}</td>`;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            document.getElementById("q").addEventListener("input", () => renderAll(window._extRaw || []));
+            document.getElementById("refresh").addEventListener("click", fetchAndRender);
+
+            fetchAndRender();
+
+        </script>
+
+    </body>
+</html>

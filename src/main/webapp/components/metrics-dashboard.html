@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="stylesheet" type="text/css" href="../css/common-dashboard.css">
     <meta charset="utf-8" />
     <title>Metrics Dashboard</title>
 
@@ -9,43 +10,11 @@
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-matrix@1.2.0"></script>
 
     <style>
-        body {
-            margin: 0;
-            font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
-            color: #1f2937;
-            background: #f8fafc;
-        }
-        .page {
-            margin: 18px auto;
-            padding: 12px;
-        }
-        .topbar { display:flex; gap:12px; align-items:center; justify-content:space-between; margin-bottom:14px; }
-        .controls { display:flex; gap:8px; align-items:center; }
-        .cards {
+        .cards-row {
             display: grid;
             grid-template-columns: repeat(auto-fit,minmax(180px,1fr));
             gap: 18px;
         }
-        .card {
-            padding: 14px;
-            border-radius: 12px;
-            color: white;
-            box-shadow: 0 6px 20px rgba(2,6,23,0.08);
-            min-height: 100px;
-            background: linear-gradient(135deg,#6a11cb,#2575fc);
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        .card-title { font-size: 0.85rem; font-weight:700; opacity:.95; }
-        .card-value { font-size:1.4rem; font-weight:800; }
-        .grid { display: grid; gap: 18px; grid-template-columns: 1fr; margin-top: 20px; }
-        @media(min-width: 1200px) { .grid { grid-template-columns: 1fr 1fr; } }
-        .chart-box { background: white; padding: 12px; border-radius: 12px; box-shadow: 0 6px 20px rgba(2,6,23,0.06); }
-        .chart-title { font-weight:700; margin-bottom:10px; color:#111827; }
-        .no-data { color:#9ca3af; text-align:center; padding:18px; }
-        .small { font-size:0.85rem; color:#444; }
-        .chip { padding:6px 10px; background:#eef2ff; border-radius:999px; font-weight:600; color:#313131; }
     </style>
 </head>
 
@@ -65,7 +34,7 @@
     </div>
 
     <!-- Metric Cards -->
-    <div id="metricCards" class="cards"></div>
+    <div id="summaryCards" class="cards-row"></div>
 
     <!-- Charts Grid -->
     <div class="grid" id="chartsGrid"></div>
@@ -202,7 +171,7 @@ function hasMetric(metrics,name){ return !!(metrics[name] && metrics[name].lengt
 
 // Rendering Cards
 function renderCards(metrics) {
-    const container = document.getElementById("metricCards");
+    const container = document.getElementById("summaryCards");
     container.innerHTML = "";
     cardDefs.forEach(([key,title], idx)=>{
         const raw = metrics[key]?.[0]?.value;
@@ -212,11 +181,11 @@ function renderCards(metrics) {
         else display = safe(raw);
 
         const card = document.createElement("div");
-        card.className="card";
+        card.className="stat";
         // Apply a full background gradient from the list, cycle through
         const gradient = gradients[idx % gradients.length];
         card.style.background = gradient;
-        card.innerHTML=`<div class="card-title">${title}</div><div class="card-value">${display}</div>`;
+        card.innerHTML=`<div class="label">${title}</div><div class="value">${display}</div>`;
         container.appendChild(card);
     });
 }
@@ -235,7 +204,7 @@ function renderCharts(metrics){
 
     chartsList.forEach(ch=>{
         const box = document.createElement('div'); box.className='chart-box';
-        box.innerHTML=`<div class="chart-title">${ch.title}</div><canvas id="${ch.id}" height="220"></canvas>`;
+        box.innerHTML=`<div class="card"><div class="small">${ch.title}</div><canvas id="${ch.id}" height="220"></canvas>`;
         grid.appendChild(box);
         const ctx = document.getElementById(ch.id).getContext('2d');
 

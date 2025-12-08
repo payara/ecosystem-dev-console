@@ -1,30 +1,29 @@
+
 function openPane(evt, tabName, id) {
     const iframe = document.getElementById('dashboardIframe');
-    const contentArea = document.getElementById('contentArea');
- const iframeSources = {
-        CDIDevConsole: "cdi-dashboard.html",
-        MetricsDashboard: "metrics-dashboard.html",
-        BeanConsole: "bean-dashboard.html",
-        RestMethods: "rest-endpoints-dashboard.html"
+    const iframeSources = {
+        CDIDevConsole: "components/cdi-dashboard.html",
+        MetricsDashboard: "components/metrics-dashboard.html",
+        BeanConsole: "components/bean-dashboard.html",
+        ScopedBeans: "components/scoped-beans-dashboard.html",
+        Producers: "components/producers-dashboard.html",
+        Extensions: "components/extensions-dashboard.html",
+        Events: "components/events-dashboard.html",
+        Observers: "components/observers-dashboard.html",
+        RestMethods: "components/rest-endpoints-dashboard.html",
+        RestExceptionMappers: "components/rest-exception-mappers.html",
+        Interceptors: "components/interceptors-dashboard.html",
+        InterceptedClasses: "components/intercepted-classes-dashboard.html",
+        Decorators: "components/decorators-dashboard.html",
+        DecoratedClasses: "components/decorated-classes-dashboard.html",
+        SecurityAnnotations: "components/security-audit-dashboard.html"
     };
-    // Show the dashboard iframe only when requested, otherwise hide it
-    if (tabName === 'CDIDevConsole' || tabName === 'MetricsDashboard' 
-            || tabName === 'BeanConsole' || tabName === 'RestMethods') {
-        iframe.style.display = 'block';
-        contentArea.style.display ='none';
-         if (iframe.src !== iframeSources[tabName]) {
-            if (tabName === 'BeanConsole') {
-                iframe.src = iframeSources[tabName] + "?bean=" + encodeURIComponent(id);
-            } else if (tabName === 'RestConsole') {
-                iframe.src = iframeSources[tabName];
-            } else {
-                iframe.src = iframeSources[tabName];
-            }
-        }
+    if (tabName === 'BeanConsole') {
+        iframe.src = iframeSources[tabName] + "?bean=" + encodeURIComponent(id);
     } else {
-        iframe.style.display = 'none';
-        contentArea.style.display ='block';
+        iframe.src = iframeSources[tabName];
     }
+
 
     const tabcontent = document.getElementsByClassName('tabcontent');
     for (const tab of tabcontent) {
@@ -52,7 +51,6 @@ function openPane(evt, tabName, id) {
 
     localStorage.setItem('activeTab', tabName);
 
-    filterBeans();
 }
 
 document.getElementById('sidePane').addEventListener('keydown', e => {

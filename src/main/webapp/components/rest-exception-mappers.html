@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <link rel="stylesheet" type="text/css" href="../css/common-dashboard.css">
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>REST Exception Mappers — CDI Dev Mode</title>
+    </head>
+
+    <body>
+
+        <div class="page">
+
+            <h1>REST Exception Mappers</h1>
+
+            <div class="controls">
+                <input id="q" type="search" placeholder="Search mapper or exception…" />
+                <button id="refresh">Refresh</button>
+            </div>
+
+            <div class="cards-row" id="summaryCards"></div>
+
+            <div class="wrapper">
+                <table id="mapperTable">
+                    <thead>
+                        <tr>
+                            <th>Mapper Class</th>
+                            <th>Handles Exception</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+        </div>
+
+        <script>
+
+            // Fetch and render
+            async function fetchAndRender() {
+                try {
+                    const res = await fetch("../resources/dev/rest-exception-mappers");
+                    const json = await res.json();
+
+                    // Convert object { mapper: exception } → array of entries
+                    const list = Object.entries(json).map(([mapper, exception]) => ({
+                            mapper,
+                            exception
+                        }));
+
+                    window._mapperRaw = list;
+                    renderAll(list);
+
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            // Render everything
+            function renderAll(items) {
+                const q = document.getElementById("q").value.toLowerCase().trim();
+
+                const filtered = items.filter(it =>
+                    it.mapper.toLowerCase().includes(q) ||
+                            it.exception.toLowerCase().includes(q)
+                );
+
+                renderSummary(items);
+                renderTable(filtered);
+            }
+
+            // Summary card
+            function renderSummary(items) {
+                const total = items.length;
+
+                const container = document.getElementById("summaryCards");
+                container.innerHTML = "";
+
+                const card = document.createElement("div");
+                card.className = "stat";
+                card.style.background = 'linear-gradient(135deg,#6a11cb,#2575fc)';
+                card.innerHTML = `
+                <div class="label">Total Mappers</div>
+                <div class="value" style="font-size:1.6rem;font-weight:800">${total}</div>
+            `;
+
+                container.appendChild(card);
+            }
+
+            // Render table
+            function renderTable(items) {
+                const tbody = document.querySelector("#mapperTable tbody");
+                tbody.innerHTML = "";
+
+                items.forEach(it => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                    <td>${it.mapper}</td>
+                    <td>${it.exception}</td>
+                `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            document.getElementById("q").addEventListener("input", () =>
+                renderAll(window._mapperRaw || [])
+            );
+
+            document.getElementById("refresh").addEventListener("click", fetchAndRender);
+
+            fetchAndRender();
+
+        </script>
+
+    </body>
+</html>

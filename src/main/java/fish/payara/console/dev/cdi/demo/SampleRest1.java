@@ -16,9 +16,9 @@ import java.util.Random;
  *
  * @author Gaurav Gupta
  */
-@Path("/dev")
+@Path("/dev1")
 @Produces(MediaType.APPLICATION_JSON)
-public class SampleRest {
+public class SampleRest1 {
 
     private final Random random = new Random();
     

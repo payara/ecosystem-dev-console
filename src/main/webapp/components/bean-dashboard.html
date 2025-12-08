@@ -1,194 +1,16 @@
 <!doctype html>
 <html lang="en">
     <head>
+        <link rel="stylesheet" type="text/css" href="../css/common-dashboard.css">
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>Bean Detail — CDI Dev Mode</title>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-funnel@4"></script>
         <script src="https://d3js.org/d3.v7.min.js"></script>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
-        <style>
-            :root{
-                --bg:#0f1724;
-                --card:#fff;
-                --muted:#6b7280
-            }
-            body{
-                font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
-                margin:0;
-                color:#0f1724
-            }
-            .wrap{
-                margin:18px auto;
-                padding:12px
-            }
-            .top{
-                display:flex;
-                gap:12px;
-                align-items:center
-            }
-            h1{
-                margin:0;
-                font-size:1.2rem
-            }
-            .meta{
-                margin-left:auto;
-                text-align:right
-            }
-            .meta .big{
-                font-size:1.6rem;
-                font-weight:800
-            }
-            .grid{
-                display:grid;
-                grid-template-columns:1fr;
-                gap:14px;
-                margin-top:14px
-            }
-            @media(min-width:980px){
-                .grid{
-                    grid-template-columns:repeat(2,1fr)
-                }
-            }
-            .card{
-                background:var(--card);
-                padding:12px;
-                border-radius:10px;
-                box-shadow:0 8px 24px rgba(2,6,23,0.06)
-            }
-            .row{
-                display:flex;
-                gap:8px;
-                align-items:center
-            }
-            .chips{
-                display:flex;
-                gap:6px;
-                flex-wrap:wrap
-            }
-            .chip{
-                background:#eef2ff;
-                padding:6px 8px;
-                border-radius:999px;
-                font-size:0.85rem
-            }
-            table{
-                width:100%;
-                border-collapse:collapse;
-                font-size:0.9rem
-            }
-            th,td{
-                padding:8px;
-                border-bottom:1px solid #eef2ff;
-                text-align:left
-            }
-            .muted{
-                color:var(--muted)
-            }
-            .small{
-                font-size:0.85rem
-            }
-            .statRow{
-                display:flex;
-                gap:8px;
-                align-items:center
-            }
-            .stat{
-                padding:8px 10px;
-                border-radius:8px;
-                font-weight:600;
-                min-width:86px;
-                text-align:center
-            }
-            .badge{
-                background:#eef2ff;
-                padding:4px 8px;
-                border-radius:999px;
-                font-size:0.8rem
-            }
-            .progressWrap{
-                background:#f1f5f9;
-                border-radius:8px;
-                padding:6px
-            }
-            .progressBar{
-                height:10px;
-                background:linear-gradient(90deg,#34d399,#60a5fa);
-                border-radius:6px;
-                width:0
-            }
-            pre#rawJson{
-                background:#fafafa
-            }
-        </style>
-        <style>
-            html,body{
-                height:100%;
-                margin:0;
-                font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial
-            }
-            .container{
-                display:flex;
-                height:100vh
-            }
-            .left{
-                width:95%;
-                border-right:1px solid #eee;
-                position:relative
-            }
-            .right{
-                width:5%;
-                padding:12px;
-                box-sizing:border-box
-            }
-            #svg{
-                width:100%;
-                height:100%
-            }
-            .node rect{
-                stroke:#333;
-                stroke-width:1.2px
-            }
-            .node text{
-                font-size:12px;
-                pointer-events:none
-            }
-            .link{
-                stroke:#999;
-                stroke-opacity:0.6
-            }
-            .bean{
-                fill:#ffdd57
-            }
-            .dep{
-                fill:#7fb3ff
-            }
-            .panel h3{
-                margin:8px 0
-            }
-            .controls{
-                display:flex;
-                gap:8px;
-                margin-bottom:8px
-            }
-            button{
-                padding:6px 8px;
-                border-radius:6px;
-                border:1px solid #ccc;
-                background:#fff;
-                cursor:pointer;
-                    width: fit-content;
-            }
-            .small{
-                font-size:13px;
-                color:#444
-            }
-        </style>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     </head>
     <body>
         <div class="wrap">
@@ -210,44 +32,44 @@
 
 
             <div class="container">
-    <div class="left">
-        <svg id="svg"></svg>
-    </div>
+                <div class="left">
+                    <svg id="svg"></svg>
+                </div>
 
-    <div class="right">
-        <div class="controls d-flex flex-column gap-2">
+                <div class="right">
+                    <div class="controls d-flex flex-column gap-2">
 
-            <button id="fit" 
-                    class="btn btn-outline-primary"
-                    data-bs-toggle="tooltip"
-                    data-bs-placement="top"
-                    data-bs-title="Fit graph to screen">
-                <i class="bi bi-arrows-fullscreen"></i> 
-            </button>
+                        <button id="fit" 
+                                class="btn btn-outline-primary"
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="top"
+                                data-bs-title="Fit graph to screen">
+                            <i class="bi bi-arrows-fullscreen"></i> 
+                        </button>
 
-            <button id="center" 
-                    class="btn btn-outline-secondary"
-                    data-bs-toggle="tooltip"
-                    data-bs-placement="top"
-                    data-bs-title="Center selected bean">
-                <i class="bi bi-crosshair"></i> 
-            </button>
+                        <button id="center" 
+                                class="btn btn-outline-secondary"
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="top"
+                                data-bs-title="Center selected bean">
+                            <i class="bi bi-crosshair"></i> 
+                        </button>
 
-            <button id="download" 
-                    class="btn btn-outline-success"
-                    data-bs-toggle="tooltip"
-                    data-bs-placement="top"
-                    data-bs-title="Download graph as PNG image">
-                <i class="bi bi-download"></i> 
-            </button>
-        </div>
+                        <button id="download" 
+                                class="btn btn-outline-success"
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="top"
+                                data-bs-title="Download graph as PNG image">
+                            <i class="bi bi-download"></i> 
+                        </button>
+                    </div>
 
-        <div class="panel mt-4">
-            <h3>Selected node</h3>
-            <div id="info" class="small">Click a node to see details</div>
-        </div>
-    </div>
-</div>
+                    <div class="panel mt-4">
+                        <h3>Selected node</h3>
+                        <div id="info" class="small">Click a node to see details</div>
+                    </div>
+                </div>
+            </div>
 
             <div class="grid">
                 <div class="card">
@@ -536,9 +358,9 @@
 
         <script>
 
-const bean = qs('bean') || (location.pathname.match(/beans\/(.*)$/) || [])[1];
-                
-                const beanName = decodeURIComponent(bean);
+            const bean = qs('bean') || (location.pathname.match(/beans\/(.*)$/) || [])[1];
+
+            const beanName = decodeURIComponent(bean);
             const endpoint = 'resources/dev/bean-graph/' + beanName;
 
             fetch(endpoint, {headers: {'Accept': 'application/json'}})
@@ -598,9 +420,9 @@ const bean = qs('bean') || (location.pathname.match(/beans\/(.*)$/) || [])[1];
                     });
 
 
-        // =====================================================
-        // ================== RENDER GRAPH ======================
-        // =====================================================
+            // =====================================================
+            // ================== RENDER GRAPH ======================
+            // =====================================================
             function render(graph) {
 
                 let nodes = graph.nodes;
@@ -766,11 +588,11 @@ const bean = qs('bean') || (location.pathname.match(/beans\/(.*)$/) || [])[1];
                 setTimeout(fit, 900);
             }
 
-document.addEventListener("DOMContentLoaded", () => {
-    [...document.querySelectorAll('[data-bs-toggle="tooltip"]')]
-        .map(el => new bootstrap.Tooltip(el));
-});
-</script>
+            document.addEventListener("DOMContentLoaded", () => {
+                [...document.querySelectorAll('[data-bs-toggle="tooltip"]')]
+                        .map(el => new bootstrap.Tooltip(el));
+            });
+        </script>
 
     </body>
 </html>

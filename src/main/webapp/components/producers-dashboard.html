@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <link rel="stylesheet" type="text/css" href="../css/common-dashboard.css">
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Producers Dashboard — CDI Dev Mode</title>
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    </head>
+
+    <body>
+        <div class="page">
+            <h1>CDI Producers</h1>
+
+            <div class="controls">
+                <input id="q" type="search" placeholder="Filter by class, type or signature" />
+                <select id="kindFilter">
+                    <option value="">All kinds</option>
+                    <option value="METHOD">METHOD</option>
+                    <option value="FIELD">FIELD</option>
+                </select>
+                <button id="refresh">Refresh</button>
+            </div>
+
+            <div class="cards-row" id="summaryCards"></div>
+
+            <div class="grid">
+                <div class="card">
+                    <div class="small">Top Produced — By Count</div>
+                    <canvas id="producedChart" height="220"></canvas>
+                </div>
+
+                <div class="card">
+                    <div class="small">Produced Types Distribution</div>
+                    <canvas id="typesChart" height="260"></canvas>
+                </div>
+            </div>
+
+            <div class="card full-width">
+                <div class="small">All Producers</div>
+                <div class="producers-wrapper">
+                    <table id="producersTable">
+                        <thead>
+                            <tr>
+                                <th>Class</th>
+                                <th>Kind</th>
+                                <th>Member</th>
+                                <th>Produced Type</th>
+                                <th>Count</th>
+                                <th>Last Produced</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <script>
+
+            function shorten(n) {
+                return n.split(".").slice(-2).join(".");
+            }
+
+            async function fetchAndRender() {
+                debugger;
+                try {
+                    const res = await fetch("../resources/dev/producers");
+                    const data = await res.json();
+                    window._producerRaw = data;
+                    renderAll(data);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            function renderAll(items) {
+                const q = document.getElementById("q").value.toLowerCase().trim();
+                const kind = document.getElementById("kindFilter").value;
+
+                const filtered = items.filter(it => {
+                    if (kind && it.kind !== kind)
+                        return false;
+                    if (!q)
+                        return true;
+
+                    return it.className.toLowerCase().includes(q)
+                            || it.memberSignature.toLowerCase().includes(q)
+                            || it.producedType.toLowerCase().includes(q);
+                });
+
+                renderSummary(items);
+                renderProducedChart(filtered);
+                renderTypesChart(filtered);
+                renderTable(filtered);
+            }
+
+            function renderSummary(items) {
+                const total = items.length;
+                const totalProduced = items.reduce((s, i) => s + (i.producedCount || 0), 0);
+
+                const cards = [
+                    {label: "Producers", value: total},
+                    {label: "Total Produced", value: totalProduced}
+                ];
+
+                const colors = [
+                    'linear-gradient(135deg,#6366f1,#3b82f6)',
+                    'linear-gradient(135deg,#06b6d4,#0ea5e9)'
+                ];
+
+                const c = document.getElementById("summaryCards");
+                c.innerHTML = "";
+
+                cards.forEach((card, i) => {
+                    const d = document.createElement("div");
+                    d.className = "stat";
+                    d.style.background = colors[i];
+                    d.innerHTML = `<div class="label">${card.label}</div><div class="value">${card.value}</div>`;
+                    c.appendChild(d);
+                });
+            }
+
+            function renderProducedChart(items) {
+                const sorted = items.slice().sort((a, b) => (b.producedCount || 0) - (a.producedCount || 0)).slice(0, 10);
+                const labels = sorted.map(x => shorten(x.className));
+                const data = sorted.map(x => x.producedCount || 0);
+
+                const ctx = document.getElementById("producedChart").getContext("2d");
+                if (window._prodChart)
+                    window._prodChart.destroy();
+                window._prodChart = new Chart(ctx, {
+                    type: "bar",
+                    data: {labels, datasets: [{label: "Produced", data}]},
+                    options: {responsive: true, plugins: {legend: {display: false}}, scales: {y: {beginAtZero: true}}}
+                });
+            }
+
+            function renderTypesChart(items) {
+                const typeMap = {};
+                items.forEach(it => {
+                    typeMap[it.producedType] = (typeMap[it.producedType] || 0) + 1;
+                });
+
+                const labels = Object.keys(typeMap).map(shorten);
+                const data = Object.values(typeMap);
+
+                const ctx = document.getElementById("typesChart").getContext("2d");
+                if (window._typesChart)
+                    window._typesChart.destroy();
+                window._typesChart = new Chart(ctx, {
+                    type: "bar",
+                    data: {labels, datasets: [{label: "Occurrences", data}]},
+                    options: {responsive: true, scales: {y: {beginAtZero: true}}}
+                });
+            }
+
+            function renderTable(items) {
+                const tb = document.querySelector("#producersTable tbody");
+                tb.innerHTML = "";
+
+                items.forEach(it => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                    <td>${it.className}</td>
+                    <td>${it.kind}</td>
+                    <td>${it.memberSignature}</td>
+                    <td>${it.producedType}</td>
+                    <td>${it.producedCount}</td>
+                    <td>${it.lastProduced || ""}</td>
+                `;
+
+                    tr.style.cursor = "pointer";
+                    tr.addEventListener("click", () => {
+                        const enc = encodeURIComponent(it.className);
+                        window.location.href = "producer-dashboard.html?class=" + enc;
+                    });
+
+                    tb.appendChild(tr);
+                });
+            }
+
+            document.getElementById("q").addEventListener("input", () => renderAll(window._producerRaw || []));
+            document.getElementById("kindFilter").addEventListener("change", () => renderAll(window._producerRaw || []));
+            document.getElementById("refresh").addEventListener("click", fetchAndRender);
+
+            fetchAndRender();
+        </script>
+
+    </body>
+</html>

@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" type="text/css" href="../css/common-dashboard.css">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Decorator Details — CDI Dev Mode</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+</head>
+
+<body>
+<div class="page">
+
+    <a href="components/decorators-dashboard.html" class="back">← Back to Dashboard</a>
+
+    <h1 id="title">Decorator Details</h1>
+
+    <!-- Metadata -->
+    <div class="card">
+        <div class="small">Decorator Metadata</div>
+        <div class="meta-grid" id="metaGrid"></div>
+    </div>
+
+    <!-- Charts -->
+    <div class="card">
+        <div class="small">Invocation Timeline</div>
+        <canvas id="invocationTimeline" height="120"></canvas>
+    </div>
+
+    <!-- Records Table -->
+    <div class="card">
+        <div class="small">Invocation Records</div>
+        <div class="records-wrapper">
+            <table>
+                <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Time</th>
+                    <th>Duration (ms)</th>
+                </tr>
+                </thead>
+                <tbody id="recordsBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<script>
+
+/* --------------------------- LOAD DATA --------------------------- */
+
+async function loadDecorator() {
+    const params = new URLSearchParams(window.location.search);
+    const className = params.get("class");
+
+    if (!className) {
+        alert("No decorator class specified");
+        return;
+    }
+
+    const url = `resources/dev/decorators/${className}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    renderPage(data);
+}
+
+function renderPage(data) {
+    document.getElementById("title").innerText = shorten(data.className);
+    renderMeta(data);
+    renderInvocationTimeline(data);
+    renderRecordsTable(data);
+}
+
+/* --------------------------- HELPERS --------------------------- */
+
+function shorten(name) {
+    return name.split(".").pop();
+}
+
+function shortTs(ts) {
+    return ts.replace("T", " ").replace("Z", "");
+}
+
+/* --------------------------- META GRID --------------------------- */
+
+function renderMeta(d) {
+    const grid = document.getElementById("metaGrid");
+
+    grid.innerHTML = `
+        <div class="meta-box">
+            <div class="meta-label">Class</div>
+            <div class="meta-value">${shorten(d.className)}</div>
+        </div>
+
+        <div class="meta-box">
+            <div class="meta-label">Scope</div>
+            <div class="meta-value">${shorten(d.scope)}</div>
+        </div>
+
+        <div class="meta-box">
+            <div class="meta-label">Created Count</div>
+            <div class="meta-value">${d.createdCount}</div>
+        </div>
+
+        <div class="meta-box">
+            <div class="meta-label">Invoked Count</div>
+            <div class="meta-value">${d.invokedCount}</div>
+        </div>
+
+        <div class="meta-box">
+            <div class="meta-label">Delegate Type</div>
+            <div class="meta-value">${shorten(d.delegateType)}</div>
+        </div>
+
+        <div class="meta-box">
+            <div class="meta-label">Decorated Types</div>
+            <div class="meta-value">${d.decoratedTypes.map(shorten).join("<br>")}</div>
+        </div>
+
+        <div class="meta-box">
+            <div class="meta-label">Class Qualifiers</div>
+            <div class="meta-value">${d.classQualifiers.map(shorten).join("<br>") || "-"}</div>
+        </div>
+
+        <div class="meta-box">
+            <div class="meta-label">Delegate Qualifiers</div>
+            <div class="meta-value">${d.delegateQualifiers.map(shorten).join("<br>") || "-"}</div>
+        </div>
+    `;
+}
+
+/* --------------------------- CHART --------------------------- */
+
+function renderInvocationTimeline(d) {
+    if (!d.invocationRecords || d.invocationRecords.length === 0) return;
+
+    const points = d.invocationRecords.map(r => ({
+        x: new Date(r.timestamp),
+        y: r.durationMs
+    }));
+
+    const ctx = document.getElementById("invocationTimeline").getContext("2d");
+
+    new Chart(ctx, {
+        type: "line",
+        data: {
+            datasets: [{
+                label: "Invocation Duration (ms)",
+                data: points,
+                fill: false,
+                borderWidth: 2,
+                tension: 0.2,
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    type: "time",
+                    time: { unit: "second" },
+                    title: { display: true, text: "Execution Time" }
+                },
+                y: {
+                    beginAtZero: true,
+                    title: { display: true, text: "Duration (ms)" }
+                }
+            }
+        }
+    });
+}
+
+/* --------------------------- TABLE --------------------------- */
+
+function renderRecordsTable(d) {
+    const tbody = document.getElementById("recordsBody");
+
+    if (!d.invocationRecords || d.invocationRecords.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3">No invocation records available</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = d.invocationRecords.map((r, i) => `
+        <tr>
+            <td>${i + 1}</td>
+            <td>${shortTs(r.timestamp)}</td>
+            <td>${r.durationMs}</td>
+        </tr>
+    `).join("");
+}
+
+/* --------------------------- INIT --------------------------- */
+
+loadDecorator();
+
+</script>
+
+</body>
+</html>

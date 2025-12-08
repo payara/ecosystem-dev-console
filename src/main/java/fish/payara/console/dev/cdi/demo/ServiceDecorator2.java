@@ -9,7 +9,7 @@ import java.io.Serializable;
 
 @Decorator
 @Priority(10)
-public class ServiceDecorator implements Service, Serializable {
+public class ServiceDecorator2 implements Service, Serializable {
 
     @Inject
     @Delegate
@@ -21,6 +21,6 @@ public class ServiceDecorator implements Service, Serializable {
         System.out.println("Decorator: Before serving");
         String result = delegate.serve(input);
         System.out.println("Decorator: After serving");
-        return result + " [decorated]";
+        return result + " [decorated2]";
     }
 }

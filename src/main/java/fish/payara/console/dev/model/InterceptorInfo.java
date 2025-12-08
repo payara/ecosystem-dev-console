@@ -40,6 +40,7 @@ package fish.payara.console.dev.model;
 
 import jakarta.enterprise.inject.spi.Annotated;
 import jakarta.enterprise.inject.spi.AnnotatedType;
+import java.time.Instant;
 
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -53,7 +54,7 @@ public class InterceptorInfo extends BeanInfo {
     private final int priority;
     private final String scope;
     private final Set<String> classQualifiers;
-
+    
     public InterceptorInfo(String className,
             Set<String> interceptorBindings,
             int priority,

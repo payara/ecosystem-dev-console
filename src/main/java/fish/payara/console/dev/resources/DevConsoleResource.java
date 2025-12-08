@@ -38,22 +38,24 @@
  */
 package fish.payara.console.dev.resources;
 
-import fish.payara.console.dev.cdi.demo.SampleSessionBean;
 import fish.payara.console.dev.dto.BeanDTO;
 import fish.payara.console.dev.dto.BeanFullDTO;
 import fish.payara.console.dev.dto.BeanGraphDTO;
 import fish.payara.console.dev.dto.SecurityAnnotationDTO;
 import fish.payara.console.dev.core.DevConsoleExtension;
 import fish.payara.console.dev.core.DevConsoleRegistry;
+import fish.payara.console.dev.dto.DecoratorDTO;
+import fish.payara.console.dev.dto.DecoratorFullDTO;
 import fish.payara.console.dev.model.InstanceStats;
-import fish.payara.console.dev.model.DecoratorInfo;
 import fish.payara.console.dev.dto.EventDTO;
-import fish.payara.console.dev.model.InterceptorInfo;
 import fish.payara.console.dev.dto.ObserverDTO;
 import fish.payara.console.dev.dto.ProducerDTO;
 import fish.payara.console.dev.model.ProducerInfo;
 import fish.payara.console.dev.dto.RestMethodDTO;
 import fish.payara.console.dev.dto.RestResourceDTO;
+import fish.payara.console.dev.dto.InterceptorDTO;
+import fish.payara.console.dev.dto.InterceptorFullDTO;
+import fish.payara.console.dev.model.DecoratedClassInfo;
 import fish.payara.console.dev.model.HTTPRecord;
 import fish.payara.console.dev.model.InterceptedClassInfo;
 import fish.payara.console.dev.model.ScopedBeanInfo;
@@ -65,15 +67,17 @@ import jakarta.enterprise.inject.spi.Bean;
 import jakarta.enterprise.inject.spi.BeanManager;
 import jakarta.enterprise.inject.spi.Extension;
 import jakarta.inject.Inject;
-import jakarta.interceptor.Interceptor;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.lang.annotation.Annotation;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Path("/dev")
@@ -84,8 +88,9 @@ public class DevConsoleResource {
 
     @Inject
     private BeanManager beanManager;
+
     @Inject
-    private SampleSessionBean sampleSessionBean;
+    private RestMetricsRegistry restregistry;
 
     @GET
     @Path("/beans")
@@ -98,7 +103,6 @@ public class DevConsoleResource {
     @Path("/beans/{id}")
     public Response getBeanById(@PathParam("id") String id) {
         guard();
-        sampleSessionBean.hello();
         for (Bean<?> bean : registry.getBeans()) {
             if (bean.getBeanClass().getName().equals(id)) {
                 BeanFullDTO dto = new BeanFullDTO(bean,
@@ -234,27 +238,117 @@ public class DevConsoleResource {
 
     @GET
     @Path("/interceptors")
-    public List<InterceptorInfo> interceptors() {
+    public List<InterceptorDTO> interceptors() {
         guard();
-        return registry.getInterceptors();
+
+        return registry.getInterceptors().stream()
+                .map(bean -> {
+
+                    InterceptorDTO info = new InterceptorDTO(bean);
+
+                    InstanceStats stats
+                            = registry.getStats(bean.getClassName());
+
+                    info.setCreatedCount(stats.getCreatedCount().get());
+                    info.setLastCreated(stats.getLastCreated().get());
+                    info.setInvokedCount(stats.getInvocationCount().get());
+                    info.setLastInvoked(stats.getLastInvoked().get());
+
+                    return info;
+                })
+                .toList();
+    }
+
+    @GET
+    @Path("/interceptors/{className}")
+    public InterceptorFullDTO getInterceptor(@PathParam("className") String className) {
+        guard();
+
+        // Find interceptor metadata in registry
+        var bean = registry.getInterceptors().stream()
+                .filter(i -> i.getClassName().equals(className))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException(
+                "Interceptor not found: " + className));
+
+        // Prepare DTO
+        InterceptorFullDTO info = new InterceptorFullDTO(bean);
+
+        InstanceStats stats = registry.getStats(bean.getClassName());
+        if (stats != null) {
+            info.setCreatedCount(stats.getCreatedCount().get());
+            info.setLastCreated(stats.getLastCreated().get());
+            info.setInvokedCount(stats.getInvocationCount().get());
+            info.setLastInvoked(stats.getLastInvoked().get());
+            info.setInvocationRecords(stats.getInvocationRecords());
+        }
+        return info;
     }
 
     @GET
     @Path("/intercepted-classes")
     public List<InterceptedClassInfo> interceptedClasses() {
+
         guard();
-        return registry.getBeans().stream()
-                .filter(bean -> !bean.getBeanClass().isAnnotationPresent(Interceptor.class)) // exclude interceptor classes
-                .filter(this::hasInterceptorBinding) // only beans with interceptor bindings
-                .map(InterceptedClassInfo::new)
-                .toList();
+
+        return interceptorSummary(registry.getInterceptorChains());
     }
 
     @GET
     @Path("/decorators")
-    public List<DecoratorInfo> decorators() {
+    public List<DecoratorDTO> decorators() {
         guard();
-        return registry.getDecorators();
+        return registry.getDecorators().stream()
+                .map(bean -> {
+
+                    DecoratorDTO info = new DecoratorDTO(bean);
+
+                    InstanceStats stats
+                            = registry.getStats(bean.getClassName());
+
+                    info.setCreatedCount(stats.getCreatedCount().get());
+                    info.setLastCreated(stats.getLastCreated().get());
+                    info.setInvokedCount(stats.getInvocationCount().get());
+                    info.setLastInvoked(stats.getLastInvoked().get());
+
+                    return info;
+                })
+                .toList();
+    }
+
+    @GET
+    @Path("/decorators/{className}")
+    public DecoratorFullDTO getDecorator(@PathParam("className") String className) {
+        guard();
+
+        // Find interceptor metadata in registry
+        var bean = registry.getDecorators().stream()
+                .filter(i -> i.getClassName().equals(className))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException(
+                "Decorator not found: " + className));
+
+        // Prepare DTO
+        DecoratorFullDTO info = new DecoratorFullDTO(bean);
+
+        InstanceStats stats = registry.getStats(bean.getClassName());
+        if (stats != null) {
+            info.setCreatedCount(stats.getCreatedCount().get());
+            info.setLastCreated(stats.getLastCreated().get());
+            info.setInvokedCount(stats.getInvocationCount().get());
+            info.setLastInvoked(stats.getLastInvoked().get());
+            info.setInvocationRecords(stats.getInvocationRecords());
+        }
+        return info;
+    }
+
+    @GET
+    @Path("/decorated-classes")
+    public List<DecoratedClassInfo> decoratedClasses() {
+
+        guard();
+
+        return decoratorSummary(registry.getDecoratorChains());
     }
 
     @GET
@@ -335,64 +429,64 @@ public class DevConsoleResource {
         return registry.getBeanGraph();
     }
 
-@GET
-@Path("/bean-graph/{id}")
-public Response getBeanGraphNodeById(@PathParam("id") String id) {
-    guard();
+    @GET
+    @Path("/bean-graph/{id}")
+    public Response getBeanGraphNodeById(@PathParam("id") String id) {
+        guard();
 
-    BeanGraphDTO graph = registry.getBeanGraph();
-    if (graph == null || graph.getNodes() == null) {
-        return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
-                .entity("Bean graph not available")
-                .build();
-    }
-
-    BeanGraphDTO.BeanNode root = graph.getNodes().get(id);
-    if (root == null) {
-        return Response.status(Response.Status.NOT_FOUND)
-                .entity("Bean with id '" + id + "' not found")
-                .build();
-    }
-
-    // Build a subgraph containing only this node + dependencies
-    Map<String, BeanGraphDTO.BeanNode> subgraphNodes = new LinkedHashMap<>();
-    collectRecursive(root, graph.getNodes(), subgraphNodes);
-
-    BeanGraphDTO subgraph = new BeanGraphDTO();
-
-    // add nodes without creating new objects
-    subgraphNodes.forEach((beanId, beanNode) -> {
-        subgraph.addNode(beanId, beanNode.getBeanType(), beanNode.getDescription());
-    });
-
-    // add edges
-    subgraphNodes.forEach((beanId, beanNode) -> {
-        for (BeanGraphDTO.BeanNode dep : beanNode.getDependencies()) {
-            if (subgraphNodes.containsKey(dep.getBeanId())) {
-                subgraph.addDependency(beanId, dep.getBeanId());
-            }
+        BeanGraphDTO graph = registry.getBeanGraph();
+        if (graph == null || graph.getNodes() == null) {
+            return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+                    .entity("Bean graph not available")
+                    .build();
         }
-    });
 
-    return Response.ok(subgraph).build();
-}
-private void collectRecursive(BeanGraphDTO.BeanNode node,
-                              Map<String, BeanGraphDTO.BeanNode> allNodes,
-                              Map<String, BeanGraphDTO.BeanNode> result) {
+        BeanGraphDTO.BeanNode root = graph.getNodes().get(id);
+        if (root == null) {
+            return Response.status(Response.Status.NOT_FOUND)
+                    .entity("Bean with id '" + id + "' not found")
+                    .build();
+        }
 
-    if (result.containsKey(node.getBeanId())) {
-        return; // already processed
+        // Build a subgraph containing only this node + dependencies
+        Map<String, BeanGraphDTO.BeanNode> subgraphNodes = new LinkedHashMap<>();
+        collectRecursive(root, graph.getNodes(), subgraphNodes);
+
+        BeanGraphDTO subgraph = new BeanGraphDTO();
+
+        // add nodes without creating new objects
+        subgraphNodes.forEach((beanId, beanNode) -> {
+            subgraph.addNode(beanId, beanNode.getBeanType(), beanNode.getDescription());
+        });
+
+        // add edges
+        subgraphNodes.forEach((beanId, beanNode) -> {
+            for (BeanGraphDTO.BeanNode dep : beanNode.getDependencies()) {
+                if (subgraphNodes.containsKey(dep.getBeanId())) {
+                    subgraph.addDependency(beanId, dep.getBeanId());
+                }
+            }
+        });
+
+        return Response.ok(subgraph).build();
     }
 
-    // Add this node to result
-    result.put(node.getBeanId(), node);
+    private void collectRecursive(BeanGraphDTO.BeanNode node,
+            Map<String, BeanGraphDTO.BeanNode> allNodes,
+            Map<String, BeanGraphDTO.BeanNode> result) {
 
-    // Now recursively add dependencies
-    for (BeanGraphDTO.BeanNode dep : node.getDependencies()) {
-        collectRecursive(dep, allNodes, result);
+        if (result.containsKey(node.getBeanId())) {
+            return; // already processed
+        }
+
+        // Add this node to result
+        result.put(node.getBeanId(), node);
+
+        // Now recursively add dependencies
+        for (BeanGraphDTO.BeanNode dep : node.getDependencies()) {
+            collectRecursive(dep, allNodes, result);
+        }
     }
-}
-
 
     @GET
     @Path("/rest-resources")
@@ -433,45 +527,19 @@ private void collectRecursive(BeanGraphDTO.BeanNode node,
     @Produces(MediaType.APPLICATION_JSON)
     public List<SecurityAnnotationDTO> getSecurityAnnotations() {
         guard();
-        return registry.getSecurityAnnotations().entrySet().stream()
-                .map(e -> new SecurityAnnotationDTO(e.getKey().toString(), e.getValue()))
+        return registry.getSecurityAnnotations()
+                .entrySet().stream()
+                .map(e -> new SecurityAnnotationDTO(e.getKey(), e.getValue()))
                 .collect(Collectors.toList());
     }
 
-    @GET
-    @Path("deny")
-    @Produces(MediaType.APPLICATION_JSON)
-    @jakarta.annotation.security.DenyAll
-    public void deny() {
-        guard();
-    }
-
-    private void guard() {
-        if (!registry.enabled()) {
-            throw new NotFoundException();
-        }
-    }
-
     /**
-     * Utility: check if a bean has any interceptor binding
-     */
-    private boolean hasInterceptorBinding(Bean<?> bean) {
-        Class<?> beanClass = bean.getBeanClass();
-        List<Annotation> annotations = Arrays.asList(beanClass.getAnnotations());
-
-        // Look for any annotation that is meta-annotated with @InterceptorBinding
-        return annotations.stream().anyMatch(a
-                -> a.annotationType().isAnnotationPresent(jakarta.interceptor.InterceptorBinding.class)
-        );
-    }
-
-    
-    @Inject
-    private RestMetricsRegistry restregistry;
-    /**
-     * Return full details for a rest method.  Tries to lookup runtime records from a RestMetricsRegistry bean
-     * if present in the CDI container. The {path} parameter is matched against the stored methodSignature
+     * Return full details for a rest method. Tries to lookup runtime records
+     * from a RestMetricsRegistry bean if present in the CDI container. The
+     * {path} parameter is matched against the stored methodSignature
      * (declaringClass#methodName) or the registered REST path.
+     * @param path
+     * @return 
      */
     @GET
     @Path("/rest-methods/{path}")
@@ -482,7 +550,7 @@ private void collectRecursive(BeanGraphDTO.BeanNode node,
         // find RestMethodDTO by matching either methodSignature or the configured path
         RestMethodDTO found = registry.getRestMethodInfoMap().values().stream()
                 .filter(m -> (m.getMethodSignature() != null && m.getMethodSignature().equals(path))
-                        || (m.getPath() != null && m.getPath().equals(path)))
+                || (m.getPath() != null && m.getPath().equals(path)))
                 .findFirst().orElse(null);
 
         if (found == null) {
@@ -495,7 +563,168 @@ private void collectRecursive(BeanGraphDTO.BeanNode node,
 
         List<HTTPRecord> records = restregistry.getMetrics().get(found.getMethodSignature());
         full.setRecords(records);
-        
+
         return Response.ok(full).build();
     }
+
+    private void guard() {
+        if (!registry.enabled()) {
+            throw new NotFoundException();
+        }
+    }
+
+    private Map<String, Map<String, List<Class<?>>>> groupByClass(Map<String, List<Class<?>>> chains) {
+        Map<String, Map<String, List<Class<?>>>> grouped = new HashMap<>();
+
+        chains.forEach((key, chain) -> {
+            String className;
+            String methodName = null;
+
+            int idx = key.indexOf('#');
+            if (idx > 0) {
+                className = key.substring(0, idx);
+                methodName = key.substring(idx + 1);
+            } else {
+                className = key;
+            }
+
+            grouped
+                    .computeIfAbsent(className, k -> new LinkedHashMap<>())
+                    .put(methodName, chain); // methodName = null means class-level
+        });
+
+        return grouped;
+    }
+
+    private List<InterceptedClassInfo> interceptorSummary(Map<String, List<Class<?>>> chains) {
+
+        Map<String, Map<String, List<Class<?>>>> grouped = groupByClass(chains);
+
+        List<InterceptedClassInfo> result = new ArrayList<>();
+
+        grouped.forEach((className, methodMap) -> {
+
+            // remove empty chains BEFORE processing
+            Map<String, List<Class<?>>> nonEmpty
+                    = methodMap.entrySet().stream()
+                            .filter(e -> e.getValue() != null && !e.getValue().isEmpty())
+                            .collect(LinkedHashMap::new,
+                                    (m, e) -> m.put(e.getKey(), e.getValue()),
+                                    LinkedHashMap::putAll);
+
+            // If nothing left after removing empties → skip entire class
+            if (nonEmpty.isEmpty()) {
+                return;
+            }
+
+            // Only method-level entries (methodName != null)
+            Map<String, List<Class<?>>> methodOnly
+                    = nonEmpty.entrySet().stream()
+                            .filter(e -> e.getKey() != null)
+                            .collect(LinkedHashMap::new,
+                                    (m, e) -> m.put(e.getKey(), e.getValue()),
+                                    LinkedHashMap::putAll);
+
+            // CASE A: no method-level entries → class-only chain
+            if (methodOnly.isEmpty()) {
+                List<Class<?>> classChain = nonEmpty.values().iterator().next();
+                result.add(new InterceptedClassInfo(className, toNames(classChain)));
+                return;
+            }
+
+            // Distinct interceptor sets across methods
+            Set<List<Class<?>>> distinct = new HashSet<>(methodOnly.values());
+
+            // CASE B: all methods share same chain → class-only
+            if (distinct.size() == 1) {
+                List<Class<?>> chain = distinct.iterator().next();
+                result.add(new InterceptedClassInfo(className, toNames(chain)));
+                return;
+            }
+
+            // CASE C: methods differ → per-method output
+            methodOnly.forEach((methodName, chain) -> {
+                result.add(new InterceptedClassInfo(
+                        className + "#" + methodName,
+                        toNames(chain)
+                ));
+            });
+        });
+
+        return result;
+    }
+
+    private List<DecoratedClassInfo> decoratorSummary(Map<String, List<Class<?>>> chains) {
+
+        List<DecoratedClassInfo> result = new ArrayList<>();
+
+        chains.forEach((className, chain) -> {
+
+            // skip empty
+            if (chain == null || chain.isEmpty()) {
+                return;
+            }
+
+            // decorators apply to whole class only
+            result.add(new DecoratedClassInfo(
+                    className,
+                    toNames(chain)
+            ));
+        });
+
+        return result;
+    }
+
+    private List<String> toNames(List<Class<?>> chain) {
+        return chain.stream().map(Class::getName).toList();
+    }
+
+    @GET
+    @Path("/metadata")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getMetadata() {
+        guard();
+
+        Map<String, Object> meta = new LinkedHashMap<>();
+
+        // core CDI metadata
+        meta.put("beanCount", registry.getBeans().size());
+        meta.put("scopedBeanCount", registry.getBeans().stream()
+                .map(Bean::getScope)
+                .filter(s -> s != null)
+                .count());
+
+        // interceptors
+        meta.put("interceptorCount", registry.getInterceptors().size());
+        meta.put("interceptedClassesCount", interceptorSummary(registry.getInterceptorChains()).size());
+
+        // decorators
+        meta.put("decoratorCount", registry.getDecorators().size());
+        meta.put("decoratedClassesCount", decoratorSummary(registry.getDecoratorChains()).size());
+
+        // producers
+        meta.put("producerCount", registry.getProducers().size());
+
+        // REST
+        meta.put("restResourceCount", registry.getRestResourcePaths().size());
+        meta.put("restMethodCount", registry.getRestMethodInfoMap().size());
+        meta.put("restExceptionMapperCount", registry.getRestExceptionMappers().size());
+
+        // observers / events
+        meta.put("observerCount", registry.getObservers().size());
+        meta.put("recentEventCount", registry.getRecentEvents().size());
+
+        // security
+        meta.put("securityAnnotationCount", registry.getSecurityAnnotations().size());
+
+        // extensions
+        meta.put("extensionCount",
+                registry.getBeans().stream()
+                        .map(Bean::getBeanClass)
+                        .filter(Extension.class::isAssignableFrom)
+                        .count());
+
+        return Response.ok(meta).build();
+    }
+
 }

@@ -56,7 +56,9 @@ public class RestMethodFullDTO extends RestMethodDTO {
 
     public void setRecords(List<HTTPRecord> records) {
         this.records = records;
-        setInvoked(records.size());
+        if (records != null) {
+            setInvoked(records.size());
+        }
     }
 
 }

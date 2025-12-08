@@ -38,67 +38,23 @@
  */
 package fish.payara.console.dev.model;
 
-import java.time.Instant;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 
-/**
- *
- * @author Gaurav Gupta
- */
-public class InstanceStats {
+public class DecoratedClassInfo extends BeanInfo {
 
-    private final AtomicInteger currentCount = new AtomicInteger();
-    private final AtomicInteger createdCount = new AtomicInteger();
-    private final AtomicInteger maxCount = new AtomicInteger();
-    private final AtomicInteger destroyedCount = new AtomicInteger();
-    private final AtomicReference<Instant> lastCreated = new AtomicReference<>(null);
-    private final List<Record> creationRecords = new CopyOnWriteArrayList<>();
-    private final List<Record> destructionRecords = new CopyOnWriteArrayList<>();
-    
-    private final AtomicInteger invocationCount = new AtomicInteger();
-    private final AtomicReference<Instant> lastInvoked = new AtomicReference<>(null);
-    private final List<Record> invocationRecords = new CopyOnWriteArrayList<>();
+    private final List<String> decoratorBindings;
 
-    public AtomicInteger getCurrentCount() {
-        return currentCount;
-    }
-
-    public AtomicInteger getMaxCount() {
-        return maxCount;
-    }
-
-    public AtomicInteger getDestroyedCount() {
-        return destroyedCount;
-    }
-
-    public AtomicInteger getCreatedCount() {
-        return createdCount;
-    }
-
-    public AtomicReference<Instant> getLastCreated() {
-        return lastCreated;
-    }
-
-    public List<Record> getCreationRecords() {
-        return creationRecords;
-    }
-
-    public List<Record> getDestructionRecords() {
-        return destructionRecords;
+    public DecoratedClassInfo(String key, List<String> decoratorBindings) {
+        super(key);
+        this.decoratorBindings = decoratorBindings;
     }
     
-    public AtomicInteger getInvocationCount() {
-        return invocationCount;
-    }
-    
-    public AtomicReference<Instant> getLastInvoked() {
-        return lastInvoked;
+    public List<String> getDecoratorBindings() {
+        return decoratorBindings;
     }
 
-    public List<Record> getInvocationRecords() {
-        return invocationRecords;
+    @Override
+    public String toString() {
+        return className + " -> " + decoratorBindings;
     }
 }

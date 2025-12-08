@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <link rel="stylesheet" type="text/css" href="../css/common-dashboard.css">
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Intercepted Classes — CDI Dev Mode</title>
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    </head>
+
+    <body>
+        <div class="page">
+
+            <h1>CDI Intercepted Classes</h1>
+
+            <div class="controls">
+                <input id="q" type="search" placeholder="Filter by class or interceptor" />
+                <button id="refresh">Refresh</button>
+            </div>
+
+            <div class="cards-row" id="summaryCards"></div>
+
+            <div class="grid">
+
+                <div class="card full-width">
+                    <div class="small">All Intercepted Classes</div>
+                    <div class="interceptors-wrapper">
+                        <table id="interceptorsTable">
+                            <thead>
+                                <tr>
+                                    <th>Class</th>
+                                    <th>Interceptors</th>
+                                    <th>Count</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <script>
+
+            async function fetchData() {
+                try {
+                    const r = await fetch("../resources/dev/intercepted-classes");
+                    const data = await r.json();
+                    window._interceptedRaw = data;
+                    renderAll(data);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            function shorten(n) {
+                return n.split(".").slice(-2).join(".");
+            }
+
+            function renderAll(items) {
+                const q = document.getElementById("q").value.toLowerCase().trim();
+
+                const filtered = items.filter(it => {
+                    if (!q)
+                        return true;
+                    return it.className.toLowerCase().includes(q)
+                            || it.interceptorBindings.join(",").toLowerCase().includes(q);
+                });
+
+                renderSummary(items);
+                renderTable(filtered);
+            }
+
+            function renderSummary(items) {
+                const totalClasses = items.length;
+
+                // unique interceptors across all classes
+                const uniqueSet = new Set();
+                items.forEach(i => i.interceptorBindings.forEach(b => uniqueSet.add(b)));
+                const uniqueInterceptors = uniqueSet.size;
+
+                const cards = [
+                    {label: "Intercepted Classes", value: totalClasses},
+                    {label: "Unique Interceptors", value: uniqueInterceptors}
+                ];
+
+                const colors = [
+                    'linear-gradient(135deg,#6a11cb,#2575fc)',
+                    'linear-gradient(135deg,#34d399,#10b981)'
+                ];
+
+                const box = document.getElementById("summaryCards");
+                box.innerHTML = "";
+
+                cards.forEach((c, i) => {
+                    const d = document.createElement("div");
+                    d.className = "stat";
+                    d.style.background = colors[i];
+                    d.innerHTML = `<div class="label">${c.label}</div><div class="value">${c.value}</div>`;
+                    box.appendChild(d);
+                });
+            }
+
+            function renderTable(items) {
+                const tbody = document.querySelector("#interceptorsTable tbody");
+                tbody.innerHTML = "";
+
+                items.forEach(it => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td>${shorten(it.className)}</td>
+                        <td>${it.interceptorBindings.join("<br>")}</td>
+                        <td>${it.interceptorBindings.length}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            document.getElementById("q").addEventListener("input", () => renderAll(window._interceptedRaw || []));
+            document.getElementById("refresh").addEventListener("click", fetchData);
+
+            fetchData();
+
+        </script>
+
+    </body>
+</html>

@@ -31,6 +31,12 @@
 
     <dependencies>
         <dependency>
+    <groupId>net.bytebuddy</groupId>
+    <artifactId>byte-buddy</artifactId>
+    <version>1.15.0</version>
+</dependency>
+
+        <dependency>
             <groupId>jakarta.platform</groupId>
             <artifactId>jakarta.jakartaee-api</artifactId>
                     <scope>provided</scope>

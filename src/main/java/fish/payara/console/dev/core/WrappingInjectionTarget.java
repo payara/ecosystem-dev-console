@@ -39,9 +39,18 @@
 package fish.payara.console.dev.core;
 
 import jakarta.enterprise.context.spi.CreationalContext;
+import jakarta.enterprise.inject.spi.BeanManager;
 import jakarta.enterprise.inject.spi.InjectionPoint;
 import jakarta.enterprise.inject.spi.InjectionTarget;
+import jakarta.interceptor.AroundInvoke;
+import java.lang.reflect.Field;
 import java.util.Set;
+import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.asm.Advice;
+import net.bytebuddy.description.modifier.Visibility;
+import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
+import net.bytebuddy.implementation.SuperMethodCall;
+import net.bytebuddy.matcher.ElementMatchers;
 
 /**
  *
@@ -52,14 +61,17 @@ public class WrappingInjectionTarget<T> implements InjectionTarget<T> {
     private final InjectionTarget<T> delegate;
     private final DevConsoleRegistry registry;
     private final Class<T> beanClass;
+    private final BeanManager beanManager;
     private static final ThreadLocal<Long> creationStart = new ThreadLocal<>();
 
     WrappingInjectionTarget(Class<T> beanClass,
             InjectionTarget<T> delegate,
-            DevConsoleRegistry registry) {
+            DevConsoleRegistry registry,
+            BeanManager beanManager) {
         this.beanClass = beanClass;
         this.delegate = delegate;
         this.registry = registry;
+        this.beanManager = beanManager;
     }
 
     @Override
@@ -68,18 +80,27 @@ public class WrappingInjectionTarget<T> implements InjectionTarget<T> {
             creationStart.set(System.nanoTime());
         }
         T instance = delegate.produce(ctx);
-        return instance;
-    }
 
-    @Override
-    public void inject(T instance, CreationalContext<T> ctx) {
-        delegate.inject(instance, ctx);
+        if (beanClass.isAnnotationPresent(jakarta.interceptor.Interceptor.class)) {
+            return wrapInterceptor(instance);
+        } else if (beanClass.isAnnotationPresent(jakarta.decorator.Decorator.class)) {
+            recordCreation();
+            return wrapDecorator(instance);
+        }
+
+        return instance;
     }
 
     @Override
     public void postConstruct(T instance) {
         delegate.postConstruct(instance);
 
+        if (!beanClass.isAnnotationPresent(jakarta.decorator.Decorator.class)) {
+            recordCreation();
+        }
+    }
+
+    private void recordCreation() {
         Long start = creationStart.get();
         if (start != null) {
             long end = System.nanoTime();
@@ -87,6 +108,73 @@ public class WrappingInjectionTarget<T> implements InjectionTarget<T> {
             registry.recordCreation(beanClass, ms);
             creationStart.remove();
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private T wrapDecorator(T instance) {
+
+        Class<? extends T> proxyClass = new ByteBuddy()
+                .subclass(beanClass)
+                .method(ElementMatchers.isDeclaredBy(beanClass))
+                .intercept(Advice.to(DecoratorAdvice.class)
+                        .wrap(SuperMethodCall.INSTANCE))
+                .defineField("registry", DevConsoleRegistry.class, Visibility.PUBLIC)
+                .defineField("beanClass", Class.class, Visibility.PUBLIC)
+                .make()
+                .load(beanClass.getClassLoader(), ClassLoadingStrategy.Default.INJECTION)
+                .getLoaded();
+
+        try {
+            T proxy = proxyClass.getDeclaredConstructor().newInstance();
+
+            proxyClass.getDeclaredField("registry").set(proxy, registry);
+            proxyClass.getDeclaredField("beanClass").set(proxy, beanClass);
+
+            return proxy;
+        } catch (Exception e) {
+            throw new IllegalStateException("Decorator proxy failed", e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private T wrapInterceptor(T instance) {
+
+        Class<? extends T> proxyClass = new ByteBuddy()
+                .subclass(beanClass)
+                // Only intercept @AroundInvoke methods
+                .method(ElementMatchers.isAnnotatedWith(AroundInvoke.class))
+                .intercept(Advice.to(AroundInvokeAdvice.class)
+                        .wrap(SuperMethodCall.INSTANCE))
+                // All other methods → normal behavior
+                .implement(beanClass.getInterfaces())
+                .defineField("registry", DevConsoleRegistry.class)
+                .defineField("beanClass", Class.class)
+                .make()
+                .load(beanClass.getClassLoader(), ClassLoadingStrategy.Default.INJECTION)
+                .getLoaded();
+
+        try {
+            T proxy = proxyClass.getDeclaredConstructor().newInstance();
+
+            // inject fields into proxy
+            Field registryField = proxyClass.getDeclaredField("registry");
+            registryField.setAccessible(true);
+            registryField.set(proxy, registry);
+
+            Field beanClassField = proxyClass.getDeclaredField("beanClass");
+            beanClassField.setAccessible(true);
+            beanClassField.set(proxy, beanClass);
+
+            return proxy;
+
+        } catch (Exception e) {
+            throw new IllegalStateException("Failed to create proxy for " + beanClass, e);
+        }
+    }
+
+    @Override
+    public void inject(T instance, CreationalContext<T> ctx) {
+        delegate.inject(instance, ctx);
     }
 
     @Override

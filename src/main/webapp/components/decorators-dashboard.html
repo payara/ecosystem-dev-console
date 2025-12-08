@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <link rel="stylesheet" type="text/css" href="../css/common-dashboard.css">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Decorators Dashboard — CDI Dev Mode</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+<div class="page">
+    <h1>CDI Decorators</h1>
+
+    <div class="controls">
+        <div style="margin-left:auto" class="row">
+            <input id="q" type="search" placeholder="Filter by class or type" />
+            <select id="scopeFilter"><option value="">All scopes</option></select>
+            <button id="refresh">Refresh</button>
+        </div>
+    </div>
+
+    <div class="cards-row" id="summaryCards"></div>
+
+    <div class="grid">
+
+        <div class="card">
+            <div class="small">Invoked Count — Top Decorators</div>
+            <canvas id="invokedBar" height="220"></canvas>
+        </div>
+
+        <div class="card">
+            <div class="small">Created vs Invoked Summary</div>
+            <canvas id="createdVsInvoked" height="260"></canvas>
+        </div>
+
+    </div>
+        <div class="card.full-width">
+            <div class="small">All Decorators</div>
+
+            <div class="decorators-wrapper">
+                <table id="decoratorsTable">
+                    <thead>
+                    <tr>
+                        <th>Class</th>
+                        <th>Decorated Types</th>
+                        <th>Delegate Type</th>
+                        <th>Scope</th>
+                        <th>Created</th>
+                        <th>Invoked</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+        </div>
+</div>
+
+<script>
+
+function shorten(n){ return n.split(".").slice(-2).join("."); }
+
+async function fetchAndRender(){
+    try {
+        const res = await fetch("../resources/dev/decorators");
+        const data = await res.json();
+        window._decoratorRaw = data;
+        renderAll(data);
+    } catch(e){ console.error(e); }
+}
+
+function renderAll(items){
+    const q = document.getElementById("q").value.toLowerCase().trim();
+    const scope = document.getElementById("scopeFilter").value;
+
+    const filtered = items.filter(it=>{
+        if(scope && it.scope !== scope) return false;
+        if(!q) return true;
+
+        return it.className.toLowerCase().includes(q)
+            || it.decoratedTypes.join(",").toLowerCase().includes(q)
+            || (it.delegateType || "").toLowerCase().includes(q);
+    });
+
+    renderSummary(items);
+    renderInvokedChart(filtered);
+    renderCreatedVsInvoked(items);
+    populateScopeFilter(items);
+    renderTable(filtered);
+}
+
+function renderSummary(items){
+    const total = items.length;
+    const totalCreated = items.reduce((s,i)=>s+(i.createdCount||0),0);
+    const totalInvoked = items.reduce((s,i)=>s+(i.invokedCount||0),0);
+
+    const cards = [
+        {label:"Decorators", value:total},
+        {label:"Total Created", value:totalCreated},
+        {label:"Total Invoked", value:totalInvoked}
+    ];
+
+    const colors = [
+        'linear-gradient(135deg,#6a11cb,#2575fc)',
+        'linear-gradient(135deg,#06b6d4,#3b82f6)',
+        'linear-gradient(135deg,#34d399,#10b981)'
+    ];
+
+    const c = document.getElementById("summaryCards");
+    c.innerHTML = "";
+
+    cards.forEach((card,i)=>{
+        const d=document.createElement("div");
+        d.className="stat";
+        d.style.background=colors[i];
+        d.innerHTML=`<div class="label">${card.label}</div><div class="value">${card.value}</div>`;
+        c.appendChild(d);
+    });
+}
+
+function renderInvokedChart(items){
+    const sorted = items.slice().sort((a,b)=> (b.invokedCount||0)-(a.invokedCount||0)).slice(0,10);
+    const labels = sorted.map(x=>shorten(x.className));
+    const data = sorted.map(x=>x.invokedCount||0);
+
+    const ctx=document.getElementById("invokedBar").getContext("2d");
+    if(window._invokedBar) window._invokedBar.destroy();
+    window._invokedBar = new Chart(ctx,{
+        type:"bar",
+        data:{labels,datasets:[{label:"Invoked",data}]},
+        options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+    });
+}
+
+
+function renderCreatedVsInvoked(items){
+    const labels = items.map(i=>shorten(i.className));
+    const created = items.map(i=>i.createdCount||0);
+    const invoked = items.map(i=>i.invokedCount||0);
+
+    const ctx=document.getElementById("createdVsInvoked").getContext("2d");
+    if(window._cvi) window._cvi.destroy();
+    window._cvi = new Chart(ctx,{
+        type:"bar",
+        data:{
+            labels,
+            datasets:[
+                {label:"Created",data:created},
+                {label:"Invoked",data:invoked}
+            ]
+        },
+        options:{responsive:true,scales:{y:{beginAtZero:true}}}
+    });
+}
+
+function populateScopeFilter(items){
+    const sel=document.getElementById("scopeFilter");
+    const scopes = Array.from(new Set(items.map(i=>i.scope).filter(Boolean)));
+
+    sel.innerHTML = '<option value="">All scopes</option>' +
+            scopes.map(s=>`<option value="${s}">${s}</option>`).join('');
+}
+
+function renderTable(items){
+    const tb=document.querySelector("#decoratorsTable tbody");
+    tb.innerHTML="";
+
+    items.forEach(it=>{
+        const tr=document.createElement("tr");
+        tr.innerHTML = `
+            <td>${shorten(it.className)}</td>
+            <td>${it.decoratedTypes.join("<br>")}</td>
+            <td>${shorten(it.delegateType)}</td>
+            <td>${it.scope}</td>
+            <td>${it.createdCount}</td>
+            <td>${it.invokedCount}</td>
+        `;
+        tr.style.cursor="pointer";
+        tr.addEventListener("click",()=>{
+            const enc=encodeURIComponent(it.className);
+            window.location.href = "components/decorator-dashboard.html?class=" + enc;
+        });
+        tb.appendChild(tr);
+    });
+}
+
+document.getElementById("q").addEventListener("input",()=>renderAll(window._decoratorRaw||[]));
+document.getElementById("scopeFilter").addEventListener("change",()=>renderAll(window._decoratorRaw||[]));
+document.getElementById("refresh").addEventListener("click",fetchAndRender);
+
+fetchAndRender();
+</script>
+
+</body>
+</html>
