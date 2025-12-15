@@ -48,8 +48,8 @@ import java.util.*;
 public class BeanGraphDTO {
     private Map<String, BeanNode> nodes = new HashMap<>();
 
-    public void addNode(String beanId, String beanType, String description) {
-        nodes.putIfAbsent(beanId, new BeanNode(beanId, beanType, description));
+    public void addNode(String beanId, String description) {
+        nodes.putIfAbsent(beanId, new BeanNode(beanId, description));
     }
 
     public void addDependency(String fromBeanId, String toBeanId) {
@@ -67,22 +67,17 @@ public class BeanGraphDTO {
     @JsonbTypeAdapter(BeanNodeAdapter.class)
     public static class BeanNode {
         private String beanId;
-        private String beanType;
         private String description;
+        private boolean circular;
         private List<BeanNode> dependencies = new ArrayList<>();
 
-        public BeanNode(String beanId, String beanType, String description) {
+        public BeanNode(String beanId, String description) {
             this.beanId = beanId;
-            this.beanType = beanType;
             this.description = description;
         }
 
         public String getBeanId() {
             return beanId;
-        }
-
-        public String getBeanType() {
-            return beanType;
         }
 
         public String getDescription() {
@@ -92,5 +87,14 @@ public class BeanGraphDTO {
         public List<BeanNode> getDependencies() {
             return dependencies;
         }
+        
+        
+    public boolean isCircular() {
+        return circular;
+    }
+
+    public void setCircular(boolean circular) {
+        this.circular = circular;
+    }
     }
 }

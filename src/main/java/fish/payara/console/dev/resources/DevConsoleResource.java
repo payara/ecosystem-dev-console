@@ -450,13 +450,22 @@ public class DevConsoleResource {
 
         // Build a subgraph containing only this node + dependencies
         Map<String, BeanGraphDTO.BeanNode> subgraphNodes = new LinkedHashMap<>();
-        collectRecursive(root, graph.getNodes(), subgraphNodes);
+        collectRecursive(
+                root,
+                graph.getNodes(),
+                subgraphNodes,
+                new HashSet<>()
+        );
 
         BeanGraphDTO subgraph = new BeanGraphDTO();
 
         // add nodes without creating new objects
         subgraphNodes.forEach((beanId, beanNode) -> {
-            subgraph.addNode(beanId, beanNode.getBeanType(), beanNode.getDescription());
+            subgraph.addNode(beanId, beanNode.getDescription());
+
+            // COPY circular flag
+            BeanGraphDTO.BeanNode subNode = subgraph.getNodes().get(beanId);
+            subNode.setCircular(beanNode.isCircular());
         });
 
         // add edges
@@ -471,22 +480,39 @@ public class DevConsoleResource {
         return Response.ok(subgraph).build();
     }
 
-    private void collectRecursive(BeanGraphDTO.BeanNode node,
+    private void collectRecursive(
+            BeanGraphDTO.BeanNode node,
             Map<String, BeanGraphDTO.BeanNode> allNodes,
-            Map<String, BeanGraphDTO.BeanNode> result) {
+            Map<String, BeanGraphDTO.BeanNode> result,
+            Set<String> visiting) {
 
-        if (result.containsKey(node.getBeanId())) {
-            return; // already processed
+        String id = node.getBeanId();
+
+        // Cycle detected
+        if (visiting.contains(id)) {
+            node.setCircular(true);
+            return;
         }
 
-        // Add this node to result
-        result.put(node.getBeanId(), node);
+        if (result.containsKey(id)) {
+            return;
+        }
 
-        // Now recursively add dependencies
+        visiting.add(id);
+        result.put(id, node);
+
         for (BeanGraphDTO.BeanNode dep : node.getDependencies()) {
-            collectRecursive(dep, allNodes, result);
+            collectRecursive(dep, allNodes, result, visiting);
+
+            // Propagate cycle flag upwards if needed
+            if (dep.isCircular()) {
+                node.setCircular(true);
+            }
         }
+
+        visiting.remove(id);
     }
+
 
     @GET
     @Path("/rest-resources")

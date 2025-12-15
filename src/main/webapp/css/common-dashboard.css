@@ -192,3 +192,11 @@ button:hover { background:#2563eb; }
     text-align:center;
     padding:18px;
 }
+
+.circular-icon {
+    pointer-events: all; /* allow hover */
+    cursor: help;
+    font-size: 14px;
+    fill: #dc2626;
+    font-weight: bold;
+}

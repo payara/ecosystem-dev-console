@@ -180,7 +180,7 @@ function renderTable(items){
         tr.style.cursor="pointer";
         tr.addEventListener("click",()=>{
             const enc=encodeURIComponent(it.className);
-            window.location.href = "components/decorator-dashboard.html?class=" + enc;
+            window.location.href = "decorator-dashboard.html?class=" + enc;
         });
         tb.appendChild(tr);
     });

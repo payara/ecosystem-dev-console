@@ -13,7 +13,7 @@
 <body>
 <div class="page">
 
-    <a href="components/decorators-dashboard.html" class="back">← Back to Dashboard</a>
+    <a href="decorators-dashboard.html" class="back">← Back to Dashboard</a>
 
     <h1 id="title">Decorator Details</h1>
 
@@ -61,7 +61,7 @@ async function loadDecorator() {
         return;
     }
 
-    const url = `resources/dev/decorators/${className}`;
+    const url = `../resources/dev/decorators/${className}`;
     const res = await fetch(url);
     const data = await res.json();
 

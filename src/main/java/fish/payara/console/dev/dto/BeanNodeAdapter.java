@@ -50,20 +50,26 @@ import java.util.stream.Collectors;
  * @author Gaurav Gupta
  */
 public class BeanNodeAdapter implements JsonbAdapter<BeanNode, Map<String, Object>> {
+
+    @Override
     public Map<String, Object> adaptToJson(BeanNode beanNode) {
         Map<String, Object> map = new HashMap<>();
         map.put("beanId", beanNode.getBeanId());
-        map.put("beanType", beanNode.getBeanType());
-        map.put("description", beanNode.getDescription());
+        if (beanNode.getDescription() != null && !beanNode.getDescription().isEmpty()) {
+            map.put("description", beanNode.getDescription());
+        }
+        if (beanNode.isCircular()) {
+            map.put("circular", true);
+        }
         List<String> dependencyIds = beanNode.getDependencies().stream()
-            .map(BeanNode::getBeanId)
-            .collect(Collectors.toList());
+                .map(BeanNode::getBeanId)
+                .collect(Collectors.toList());
         map.put("dependencies", dependencyIds);
         return map;
     }
 
+    @Override
     public BeanNode adaptFromJson(Map<String, Object> map) {
-        // implement if deserialization needed, else throw UnsupportedOperationException
         throw new UnsupportedOperationException("Deserialization not supported");
     }
 }
