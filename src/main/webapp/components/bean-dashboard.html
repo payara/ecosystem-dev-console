@@ -160,7 +160,7 @@
         </div>
 
         <script>
-            const base = window.__CDI_DEV_BASE__ || '/cdi-dev-mode/resources/dev/beans/';
+            const base = '../resources/dev/beans/';
 
             function qs(param) {
                 const u = new URL(window.location.href);
@@ -361,7 +361,7 @@
             const bean = qs('bean') || (location.pathname.match(/beans\/(.*)$/) || [])[1];
 
             const beanName = decodeURIComponent(bean);
-            const endpoint = 'resources/dev/bean-graph/' + beanName;
+            const endpoint = '../resources/dev/bean-graph/' + beanName;
 
             fetch(endpoint, {headers: {'Accept': 'application/json'}})
                     .then(resp => resp.json())
@@ -392,14 +392,21 @@
                             allNodes[beanId] = {
                                 id: bean.beanId,
                                 description: bean.description,
-                                type: beanId === rootId ? "bean" : "dep"
+                                type: beanId === rootId ? "bean" : "dep",
+                                circular: bean.circular === true
                             };
 
                             for (const dep of bean.dependencies || []) {
-                                const depId =
-                                        typeof dep === "string" ? dep :
-                                        dep.beanId ? dep.beanId :
-                                        JSON.stringify(dep);
+                                const depId = typeof dep === "string" ? dep : dep.beanId;
+                                if (typeof dep === "object") {
+                                    allNodes[depId] = allNodes[depId] || {
+                                        id: depId,
+                                        description: dep.description,
+                                        type: "dep",
+                                        circular: dep.circular === true
+                                    };
+                                }
+
                                 allLinks.push({source: beanId, target: depId});
 
                                 walk(depId);
@@ -425,6 +432,7 @@
             // =====================================================
             function render(graph) {
 
+                const ICON_SPACE = 18; // px reserved for ⚠
                 let nodes = graph.nodes;
                 let links = graph.links;
 
@@ -463,6 +471,9 @@
                 node.append("rect")
                         .attr("rx", d => d.type === 'bean' ? 10 : 8)
                         .attr("ry", d => d.type === 'bean' ? 10 : 8)
+                        .attr("fill", d => d.circular ? "#fee2e2" : null)
+                        .attr("stroke", d => d.circular ? "#dc2626" : "#333")
+                        .attr("stroke-width", d => d.circular ? 2.5 : 1)
                         .attr("class", d => d.type === 'bean' ? 'bean' : 'dep')
                         .attr("x", 0).attr("y", 0)
                         .attr("width", 0).attr("height", 0);
@@ -472,12 +483,16 @@
                         .attr("dominant-baseline", "middle")
                         .text(d => shortLabel(d.id));
 
+
+
+
+
                 // measure
                 node.each(function (d) {
                     const g = d3.select(this);
                     const bbox = g.select("text").node().getBBox();
                     const pad = d.type === "bean" ? 12 : 8;
-                    const w = bbox.width + pad * 2;
+                    const w = bbox.width + pad * 2 + (d.circular ? ICON_SPACE : 0);
                     const h = bbox.height + pad * 2;
                     d.w = w;
                     d.h = h;
@@ -485,6 +500,14 @@
                             .attr("width", w).attr("height", h)
                             .attr("x", -w / 2).attr("y", -h / 2);
                 });
+
+                node.append("text")
+                        .attr("class", "circular-icon")
+                        .attr("text-anchor", "start")
+                        .attr("dominant-baseline", "hanging")
+                        .attr("x", d => d.w / 2 - ICON_SPACE + 2)
+                        .attr("y", d => -d.h / 2 + 6)
+                        .text(d => d.circular ? "⚠" : "");
 
                 node.on("click", (event, d) => selectNode(d));
 

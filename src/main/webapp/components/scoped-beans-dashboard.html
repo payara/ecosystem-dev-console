@@ -123,6 +123,13 @@
                     <td>${it.destroyedCount}</td>
                     <td>${it.maxCount}</td>
                 `;
+            
+                    tr.style.cursor = "pointer";
+                    tr.addEventListener("click", () => {
+                        const enc = encodeURIComponent(it.className);
+                        window.location.href = `bean-dashboard.html?bean=${enc}`;
+                    });
+
                     tbody.appendChild(tr);
                 });
             }

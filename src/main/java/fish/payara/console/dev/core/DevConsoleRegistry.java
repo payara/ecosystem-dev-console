@@ -278,7 +278,7 @@ public class DevConsoleRegistry {
     void registerBean(Bean<?> bean) {
         beans.put(bean.getBeanClass().getName(), bean);
         // Add bean as node in the graph
-        beanGraph.addNode(bean.getBeanClass().getName(), bean.getBeanClass().getName(), bean.toString());
+        beanGraph.addNode(bean.getBeanClass().getName(), "");
     }
 
     private final Map<jakarta.enterprise.inject.spi.AnnotatedType<?>, String> restResourcePaths = new ConcurrentHashMap<>();
@@ -288,7 +288,7 @@ public class DevConsoleRegistry {
         if (at != null && path != null) {
             restResourcePaths.put(at, path);
             String className = at.getJavaClass().getName();
-            beanGraph.addNode(className, className, "REST Resource");
+            beanGraph.addNode(className, "REST Resource");
         }
     }
 
@@ -307,7 +307,7 @@ public class DevConsoleRegistry {
             String methodId = declaringClass + "#" + methodName;
             RestMethodDTO restMethodDTO = new RestMethodDTO(methodId, path, httpMethodAndProduces);
             restMethodInfoMap.put(am, restMethodDTO);
-            beanGraph.addNode(methodId, methodName + " " + httpMethodAndProduces, "REST Method");
+            beanGraph.addNode(methodId, "REST Method: " + methodName + " " + httpMethodAndProduces);
         }
     }
 
@@ -323,7 +323,7 @@ public class DevConsoleRegistry {
         if (at != null && exceptionType != null) {
             restExceptionMappers.put(at.getBaseType().getTypeName(), exceptionType.getName());
             String className = at.getJavaClass().getName();
-            beanGraph.addNode(className, className, "REST ExceptionMapper");
+            beanGraph.addNode(className, "REST ExceptionMapper");
         }
     }
 
@@ -369,6 +369,10 @@ public class DevConsoleRegistry {
         }
     }
 
+    public BeanGraphDTO getBeanGraph() {
+        return beanGraph;
+    }
+
     public Collection<Bean<?>> getBeans() {
         return beans.values();
     }
@@ -381,9 +385,6 @@ public class DevConsoleRegistry {
         return seenTypes;
     }
 
-    public BeanGraphDTO getBeanGraph() {
-        return beanGraph;
-    }
 
     public Map<jakarta.enterprise.inject.spi.AnnotatedType<?>, String> getRestResourcePaths() {
         return restResourcePaths;

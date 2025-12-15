@@ -13,7 +13,7 @@
     <body>
         <div class="page">
 
-            <a href="components/interceptors-dashboard.html" class="back">← Back to Dashboard</a>
+            <a href="interceptors-dashboard.html" class="back">← Back to Dashboard</a>
 
             <h1 id="title">Interceptor Details</h1>
 
@@ -60,7 +60,7 @@
                     return;
                 }
 
-                const url = `resources/dev/interceptors/${className}`;
+                const url = `../resources/dev/interceptors/${className}`;
                 const res = await fetch(url);
                 const data = await res.json();
 

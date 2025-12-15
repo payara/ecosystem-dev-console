@@ -11,7 +11,7 @@
     </head>
     <body>
 
-        <a href="components/rest-endpoints-dashboard.html" class="back">← Back to Dashboard</a>
+        <a href="rest-endpoints-dashboard.html" class="back">← Back to Dashboard</a>
 
         <div class="page">
             <h2>REST Method Details</h2>
@@ -65,7 +65,7 @@
 
             async function loadRestDetails() {
                 const key = getRestKeyFromURL();
-                const url = `/cdi-dev-mode/resources/dev/rest-methods/${encodeURIComponent(key)}`;
+                const url = `../resources/dev/rest-methods/${encodeURIComponent(key)}`;
                 const res = await fetch(url);
                 const data = await res.json();
 
