@@ -23,6 +23,7 @@ async function loadSidePaneCounts() {
             interceptorCount: "count-Interceptors",
             interceptedClassesCount: "count-InterceptedClasses",
             decoratorCount: "count-Decorators",
+            injectionPointsCount: "count-InjectionPoints",
             decoratedClassesCount: "count-DecoratedClasses",
             extensionCount: "count-Extensions",
             observerCount: "count-Observers",

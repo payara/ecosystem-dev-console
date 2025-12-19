@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <link rel="stylesheet" type="text/css" href="../css/common-dashboard.css">
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Injection Points Dashboard — CDI Dev Mode</title>
+
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    </head>
+
+    <body>
+        <div class="page">
+            <h1>CDI Injection Points</h1>
+
+            <div class="controls">
+                <div style="margin-left:auto" class="row">
+                    <input id="q" type="search" placeholder="Filter by bean, type or member" />
+                    <select id="statusFilter">
+                        <option value="">All statuses</option>
+                        <option value="RESOLVED">Resolved</option>
+                        <option value="AMBIGUOUS">Ambiguous</option>
+                        <option value="UNSATISFIED">Unsatisfied</option>
+                    </select>
+                    <button id="refresh">Refresh</button>
+                </div>
+            </div>
+
+            <div class="cards-row" id="summaryCards"></div>
+
+            <div class="grid">
+
+                <div class="card">
+                    <div class="small">Injection Points by Status</div>
+                    <canvas id="statusPie" height="240"></canvas>
+                </div>
+
+                <div class="card">
+                    <div class="small">Top Beans with Problems</div>
+                    <canvas id="problemBar" height="240"></canvas>
+                </div>
+
+            </div>
+
+            <div class="card.full-width">
+                <div class="small">All Injection Points</div>
+
+                <div class="decorators-wrapper">
+                    <table id="ipTable">
+                        <thead>
+                            <tr>
+                                <th>Declaring Bean</th>
+                                <th>Member</th>
+                                <th>Required Type</th>
+                                <th>Qualifiers</th>
+                                <th>Status</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <script>
+
+            function shorten(n) {
+                return n ? n.split(".").slice(-2).join(".") : "";
+            }
+
+            function statusColor(s) {
+                return {
+                    RESOLVED: "#22c55e",
+                    AMBIGUOUS: "#f59e0b",
+                    UNSATISFIED: "#ef4444"
+                }[s] || "#9ca3af";
+            }
+
+            async function fetchAndRender() {
+                try {
+                    const res = await fetch("../resources/dev/injection-points");
+                    const data = await res.json();
+                    window._ipRaw = data;
+                    renderAll(data);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            function renderAll(items) {
+                const q = document.getElementById("q").value.toLowerCase().trim();
+                const status = document.getElementById("statusFilter").value;
+
+                const filtered = items.filter(it => {
+                    if (status && it.status !== status)
+                        return false;
+                    if (!q)
+                        return true;
+
+                    return (it.declaringBean || "").toLowerCase().includes(q)
+                            || (it.member || "").toLowerCase().includes(q)
+                            || (it.requiredType || "").toLowerCase().includes(q);
+                });
+
+                renderSummary(items);
+                renderStatusPie(items);
+                renderProblemBar(items);
+                renderTable(filtered);
+            }
+
+            function renderSummary(items) {
+                const total = items.length;
+                const resolved = items.filter(i => i.status === "RESOLVED").length;
+                const problems = items.filter(i => i.status !== "RESOLVED").length;
+
+                const cards = [
+                    {label: "Injection Points", value: total},
+                    {label: "Resolved", value: resolved},
+                    {label: "Problems", value: problems}
+                ];
+
+                const colors = [
+                    'linear-gradient(135deg,#6366f1,#3b82f6)',
+                    'linear-gradient(135deg,#22c55e,#16a34a)',
+                    'linear-gradient(135deg,#ef4444,#dc2626)'
+                ];
+
+                const c = document.getElementById("summaryCards");
+                c.innerHTML = "";
+
+                cards.forEach((card, i) => {
+                    const d = document.createElement("div");
+                    d.className = "stat";
+                    d.style.background = colors[i];
+                    d.innerHTML = `<div class="label">${card.label}</div><div class="value">${card.value}</div>`;
+                    c.appendChild(d);
+                });
+            }
+
+            function renderStatusPie(items) {
+                const counts = {RESOLVED: 0, AMBIGUOUS: 0, UNSATISFIED: 0};
+                items.forEach(i => counts[i.status]++);
+
+                const ctx = document.getElementById("statusPie").getContext("2d");
+                if (window._statusPie)
+                    window._statusPie.destroy();
+
+                window._statusPie = new Chart(ctx, {
+                    type: "doughnut",
+                    data: {
+                        labels: Object.keys(counts),
+                        datasets: [{
+                                data: Object.values(counts),
+                                backgroundColor: Object.keys(counts).map(statusColor)
+                            }]
+                    },
+                    options: {responsive: true}
+                });
+            }
+
+            function renderProblemBar(items) {
+                const map = {};
+                items.filter(i => i.status !== "RESOLVED").forEach(i => {
+                    map[i.declaringBean] = (map[i.declaringBean] || 0) + 1;
+                });
+
+                const sorted = Object.entries(map)
+                        .sort((a, b) => b[1] - a[1])
+                        .slice(0, 10);
+
+                const labels = sorted.map(x => shorten(x[0]));
+                const data = sorted.map(x => x[1]);
+
+                const ctx = document.getElementById("problemBar").getContext("2d");
+                if (window._problemBar)
+                    window._problemBar.destroy();
+
+                window._problemBar = new Chart(ctx, {
+                    type: "bar",
+                    data: {labels, datasets: [{label: "Problematic IPs", data}]},
+                    options: {responsive: true, plugins: {legend: {display: false}}, scales: {y: {beginAtZero: true}}}
+                });
+            }
+
+            function renderTable(items) {
+                const tb = document.querySelector("#ipTable tbody");
+                tb.innerHTML = "";
+
+                items.forEach(it => {
+                    const tr = document.createElement("tr");
+
+                    const details = it.failureReason
+                            ? it.failureReason
+                            : (it.candidateBeans || []).join("<br>");
+
+                    tr.innerHTML = `
+                    <td>${shorten(it.declaringBean)}</td>
+                    <td>${it.member}</td>
+                    <td>${shorten(it.requiredType)}</td>
+                    <td>${(it.qualifiers || []).join("<br>")}</td>
+                    <td>
+                        <span style="color:${statusColor(it.status)};font-weight:600">
+                            ${it.status}
+                        </span>
+                    </td>
+                    <td>${details || ""}</td>
+                `;
+
+                    tr.style.cursor = "pointer";
+                    tr.addEventListener("click", () => {
+                        const p = new URLSearchParams({
+                            declaringBean: it.declaringBean,
+                            member: it.member,
+                            requiredType: it.requiredType,
+                            qualifiers: (it.qualifiers || []).join(","),
+                            status: it.status,
+                            candidateBeans: (it.candidateBeans || []).join(","),
+                            failureReason: it.failureReason || ""
+                        });
+
+                        window.location.href = "injection-point-details.html?" + p.toString();
+                    });
+
+
+                    tb.appendChild(tr);
+                });
+            }
+
+            document.getElementById("q").addEventListener("input", () => renderAll(window._ipRaw || []));
+            document.getElementById("statusFilter").addEventListener("change", () => renderAll(window._ipRaw || []));
+            document.getElementById("refresh").addEventListener("click", fetchAndRender);
+
+            fetchAndRender();
+        </script>
+
+    </body>
+</html>

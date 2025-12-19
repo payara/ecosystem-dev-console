@@ -38,7 +38,6 @@
  */
 package fish.payara.console.dev.core;
 
-import static fish.payara.console.dev.core.DevConsoleExtension.registry;
 import fish.payara.console.dev.model.Record;
 import fish.payara.console.dev.model.InstanceStats;
 import fish.payara.console.dev.dto.BeanGraphDTO;
@@ -48,6 +47,7 @@ import fish.payara.console.dev.model.InterceptorInfo;
 import fish.payara.console.dev.model.ProducerInfo;
 import fish.payara.console.dev.dto.RestMethodDTO;
 import fish.payara.console.dev.model.AuditInfo;
+import fish.payara.console.dev.model.InjectionPointInfo;
 import jakarta.annotation.security.DenyAll;
 import jakarta.annotation.security.PermitAll;
 import jakarta.annotation.security.RolesAllowed;
@@ -97,6 +97,28 @@ public class DevConsoleRegistry {
     private final Map<String, List<Class<?>>> interceptorChains = new ConcurrentHashMap<>();
 
     private final Map<String, List<Class<?>>> decoratorChains = new ConcurrentHashMap<>();
+    
+    private final Map<String, List<InjectionPointInfo>> injectionPoints
+        = new ConcurrentHashMap<>();
+
+    public void addInjectionPointInfo(InjectionPointInfo info) {
+
+    injectionPoints
+        .computeIfAbsent(
+            info.getDeclaringBeanClass(),
+            k -> Collections.synchronizedList(new ArrayList<>())
+        )
+        .add(info);
+}
+
+    public List<InjectionPointInfo> getInjectionPointsForBean(String beanClass) {
+    return injectionPoints.getOrDefault(beanClass, List.of());
+}
+
+public Map<String, List<InjectionPointInfo>> getAllInjectionPoints() {
+    return injectionPoints;
+}
+
 
     public void recordDecoratorForBean(Class<?> beanClass, Class<?> decoratorClass) {
         decoratorChains.computeIfAbsent(beanClass.getName(), k -> new ArrayList<>())

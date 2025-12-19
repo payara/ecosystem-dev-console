@@ -16,6 +16,7 @@ function openPane(evt, tabName, id) {
         InterceptedClasses: "components/intercepted-classes-dashboard.html",
         Decorators: "components/decorators-dashboard.html",
         DecoratedClasses: "components/decorated-classes-dashboard.html",
+        InjectionPoints: "components/injection-points-dashboard.html",
         SecurityAnnotations: "components/security-audit-dashboard.html"
     };
     if (tabName === 'BeanConsole') {

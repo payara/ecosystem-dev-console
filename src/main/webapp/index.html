@@ -69,6 +69,15 @@
             </button>
 
             <button class="sideButton" aria-selected="false"
+                    aria-controls="InjectionPoints" id="side-InjectionPoints" tabindex="0"
+                    onclick="openPane(event, 'InjectionPoints')">
+                Injection Points
+                <span id="count-InjectionPoints"
+                      class="count-badge"
+                      aria-label="Injection Points count"></span>
+            </button>
+
+            <button class="sideButton" aria-selected="false"
                     aria-controls="Extensions" id="side-Extensions" tabindex="0"
                     onclick="openPane(event, 'Extensions')">
                 Extensions 

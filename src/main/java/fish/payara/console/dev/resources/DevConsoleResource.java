@@ -48,6 +48,7 @@ import fish.payara.console.dev.dto.DecoratorDTO;
 import fish.payara.console.dev.dto.DecoratorFullDTO;
 import fish.payara.console.dev.model.InstanceStats;
 import fish.payara.console.dev.dto.EventDTO;
+import fish.payara.console.dev.dto.InjectionPointDTO;
 import fish.payara.console.dev.dto.ObserverDTO;
 import fish.payara.console.dev.dto.ProducerDTO;
 import fish.payara.console.dev.model.ProducerInfo;
@@ -58,6 +59,7 @@ import fish.payara.console.dev.dto.InterceptorFullDTO;
 import fish.payara.console.dev.model.DecoratedClassInfo;
 import fish.payara.console.dev.model.HTTPRecord;
 import fish.payara.console.dev.model.InterceptedClassInfo;
+import fish.payara.console.dev.model.ResolutionStatus;
 import fish.payara.console.dev.model.ScopedBeanInfo;
 import fish.payara.console.dev.rest.RestMetricsRegistry;
 import jakarta.enterprise.context.ContextNotActiveException;
@@ -513,7 +515,6 @@ public class DevConsoleResource {
         visiting.remove(id);
     }
 
-
     @GET
     @Path("/rest-resources")
     @Produces(MediaType.APPLICATION_JSON)
@@ -564,8 +565,9 @@ public class DevConsoleResource {
      * from a RestMetricsRegistry bean if present in the CDI container. The
      * {path} parameter is matched against the stored methodSignature
      * (declaringClass#methodName) or the registered REST path.
+     *
      * @param path
-     * @return 
+     * @return
      */
     @GET
     @Path("/rest-methods/{path}")
@@ -751,6 +753,56 @@ public class DevConsoleResource {
                         .count());
 
         return Response.ok(meta).build();
+    }
+
+    @GET
+    @Path("/injection-points")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<InjectionPointDTO> getAllInjectionPoints() {
+        guard();
+
+        return registry.getAllInjectionPoints()
+                .values()
+                .stream()
+                .flatMap(List::stream)
+                .map(InjectionPointDTO::new)
+                .toList();
+    }
+
+    @GET
+    @Path("/beans/{id}/injection-points")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getInjectionPointsForBean(@PathParam("id") String beanClass) {
+        guard();
+
+        var list = registry.getInjectionPointsForBean(beanClass);
+
+        if (list == null || list.isEmpty()) {
+            return Response.ok(List.of()).build();
+        }
+
+        return Response.ok(
+                list.stream()
+                        .map(InjectionPointDTO::new)
+                        .toList()
+        ).build();
+    }
+
+    @GET
+    @Path("/injection-points/problems")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<InjectionPointDTO> getProblematicInjectionPoints() {
+        guard();
+
+        return registry.getAllInjectionPoints()
+                .values()
+                .stream()
+                .flatMap(List::stream)
+                .filter(ip
+                        -> ip.getResolutionStatus() != ResolutionStatus.RESOLVED
+                )
+                .map(InjectionPointDTO::new)
+                .toList();
     }
 
 }

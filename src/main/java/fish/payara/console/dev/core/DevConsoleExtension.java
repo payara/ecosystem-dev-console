@@ -38,9 +38,12 @@
  */
 package fish.payara.console.dev.core;
 
+import fish.payara.console.dev.model.InjectionPointInfo;
+import fish.payara.console.dev.model.ResolutionStatus;
 import fish.payara.console.dev.model.ProducerInfo;
 import jakarta.enterprise.context.spi.CreationalContext;
 import jakarta.enterprise.event.Observes;
+import jakarta.enterprise.inject.AmbiguousResolutionException;
 import jakarta.enterprise.inject.Any;
 import jakarta.enterprise.inject.spi.*;
 import jakarta.enterprise.util.AnnotationLiteral;
@@ -324,9 +327,54 @@ void recordInterceptorsChain(
         if (!registry.enabled()) {
             return;
         }
+            for (Bean<?> bean : registry.getBeans()) {
+        for (InjectionPoint ip : bean.getInjectionPoints()) {
+
+            Set<Bean<?>> candidates =
+                bm.getBeans(ip.getType(), ip.getQualifiers().toArray(new Annotation[0]));
+
+            InjectionPointInfo info = InjectionPointInfo.from(bean, ip);
+
+            if (candidates.isEmpty()) {
+                info.setResolutionStatus(ResolutionStatus.UNSATISFIED);
+                info.setFailureReason(hintUnsatisfied(ip, bm));
+            } else {
+                try {
+                    Bean<?> resolved = bm.resolve(candidates);
+                    info.setResolutionStatus(ResolutionStatus.RESOLVED);
+                    info.setCandidateBeans(
+                        List.of(resolved.getBeanClass().getName())
+                    );
+                } catch (AmbiguousResolutionException e) {
+                    info.setResolutionStatus(ResolutionStatus.AMBIGUOUS);
+                    info.setCandidateBeans(
+                        candidates.stream()
+                            .map(b -> b.getBeanClass().getName())
+                            .toList()
+                    );
+                }
+            }
+
+            registry.addInjectionPointInfo(info);
+        }
+    }
         recordInterceptorsChain(adv, bm);
         registry.finishModel(bm);
     }
+    
+    private String hintUnsatisfied(InjectionPoint ip, BeanManager bm) {
+
+    if (bm.getBeans(ip.getType()).isEmpty()) {
+        return "No beans with matching type found";
+    }
+
+    if (!ip.getQualifiers().isEmpty()) {
+        return "Qualifier mismatch: " + ip.getQualifiers();
+    }
+
+    return "Bean may be excluded (missing beans.xml or discovery mode)";
+}
+
 
     private boolean isFromCurrentWar(Class<?> clazz) {
         ClassLoader warLoader = Thread.currentThread().getContextClassLoader();
