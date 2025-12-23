@@ -16,12 +16,19 @@
             <div class="controls">
                 <div style="margin-left:auto" class="row">
                     <input id="q" type="search" placeholder="Filter by bean, type or member" />
+
                     <select id="statusFilter">
                         <option value="">All statuses</option>
                         <option value="RESOLVED">Resolved</option>
                         <option value="AMBIGUOUS">Ambiguous</option>
                         <option value="UNSATISFIED">Unsatisfied</option>
                     </select>
+
+                    <label class="checkbox">
+                        <input type="checkbox" id="problemsOnly" />
+                        Problems only
+                    </label>
+
                     <button id="refresh">Refresh</button>
                 </div>
             </div>
@@ -29,7 +36,6 @@
             <div class="cards-row" id="summaryCards"></div>
 
             <div class="grid">
-
                 <div class="card">
                     <div class="small">Injection Points by Status</div>
                     <canvas id="statusPie" height="240"></canvas>
@@ -39,7 +45,6 @@
                     <div class="small">Top Beans with Problems</div>
                     <canvas id="problemBar" height="240"></canvas>
                 </div>
-
             </div>
 
             <div class="card.full-width">
@@ -65,6 +70,8 @@
 
         <script>
 
+            /* ----------------------- UTILITIES ----------------------- */
+
             function shorten(n) {
                 return n ? n.split(".").slice(-2).join(".") : "";
             }
@@ -77,16 +84,27 @@
                 }[s] || "#9ca3af";
             }
 
+            /* ----------------------- DATA LOAD ----------------------- */
+
             async function fetchAndRender() {
                 try {
-                    const res = await fetch("../resources/dev/injection-points");
+                    const problemsOnly = document.getElementById("problemsOnly").checked;
+
+                    const url = problemsOnly
+                            ? "../resources/dev/injection-points/problems"
+                            : "../resources/dev/injection-points";
+
+                    const res = await fetch(url);
                     const data = await res.json();
+
                     window._ipRaw = data;
                     renderAll(data);
                 } catch (e) {
                     console.error(e);
                 }
             }
+
+            /* ----------------------- RENDER PIPELINE ----------------------- */
 
             function renderAll(items) {
                 const q = document.getElementById("q").value.toLowerCase().trim();
@@ -108,6 +126,8 @@
                 renderProblemBar(items);
                 renderTable(filtered);
             }
+
+            /* ----------------------- SUMMARY ----------------------- */
 
             function renderSummary(items) {
                 const total = items.length;
@@ -137,6 +157,8 @@
                     c.appendChild(d);
                 });
             }
+
+            /* ----------------------- CHARTS ----------------------- */
 
             function renderStatusPie(items) {
                 const counts = {RESOLVED: 0, AMBIGUOUS: 0, UNSATISFIED: 0};
@@ -179,9 +201,15 @@
                 window._problemBar = new Chart(ctx, {
                     type: "bar",
                     data: {labels, datasets: [{label: "Problematic IPs", data}]},
-                    options: {responsive: true, plugins: {legend: {display: false}}, scales: {y: {beginAtZero: true}}}
+                    options: {
+                        responsive: true,
+                        plugins: {legend: {display: false}},
+                        scales: {y: {beginAtZero: true}}
+                    }
                 });
             }
+
+            /* ----------------------- TABLE ----------------------- */
 
             function renderTable(items) {
                 const tb = document.querySelector("#ipTable tbody");
@@ -218,20 +246,40 @@
                             candidateBeans: (it.candidateBeans || []).join(","),
                             failureReason: it.failureReason || ""
                         });
-
                         window.location.href = "injection-point-details.html?" + p.toString();
                     });
-
 
                     tb.appendChild(tr);
                 });
             }
 
-            document.getElementById("q").addEventListener("input", () => renderAll(window._ipRaw || []));
-            document.getElementById("statusFilter").addEventListener("change", () => renderAll(window._ipRaw || []));
-            document.getElementById("refresh").addEventListener("click", fetchAndRender);
+            /* ----------------------- EVENTS ----------------------- */
+
+            document.getElementById("q")
+                    .addEventListener("input", () => renderAll(window._ipRaw || []));
+
+            document.getElementById("statusFilter")
+                    .addEventListener("change", () => renderAll(window._ipRaw || []));
+
+            document.getElementById("refresh")
+                    .addEventListener("click", fetchAndRender);
+
+            document.getElementById("problemsOnly")
+                    .addEventListener("change", e => {
+                        const sf = document.getElementById("statusFilter");
+                        if (e.target.checked) {
+                            sf.value = "";
+                            sf.querySelector('option[value="RESOLVED"]').disabled = true;
+                        } else {
+                            sf.querySelector('option[value="RESOLVED"]').disabled = false;
+                        }
+                        fetchAndRender();
+                    });
+
+            /* ----------------------- INIT ----------------------- */
 
             fetchAndRender();
+
         </script>
 
     </body>
