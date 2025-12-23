@@ -13,28 +13,29 @@
         <div class="page">
             <h1>CDI Injection Points</h1>
 
+            <!-- ================= CONTROLS ================= -->
             <div class="controls">
                 <div style="margin-left:auto" class="row">
                     <input id="q" type="search" placeholder="Filter by bean, type or member" />
 
-                    <select id="statusFilter">
-                        <option value="">All statuses</option>
-                        <option value="RESOLVED">Resolved</option>
-                        <option value="AMBIGUOUS">Ambiguous</option>
-                        <option value="UNSATISFIED">Unsatisfied</option>
+                    <!-- SINGLE SOURCE OF TRUTH -->
+                    <select id="viewMode">
+                        <option value="all">All injection points</option>
+                        <option value="resolved">Resolved</option>
+                        <option value="ambiguous">Ambiguous</option>
+                        <option value="unsatisfied">Unsatisfied</option>
+                        <option value="not-processed">Not processed</option>
+                        <option value="problems">All problems</option>
                     </select>
-
-                    <label class="checkbox">
-                        <input type="checkbox" id="problemsOnly" />
-                        Problems only
-                    </label>
 
                     <button id="refresh">Refresh</button>
                 </div>
             </div>
 
+            <!-- ================= SUMMARY CARDS ================= -->
             <div class="cards-row" id="summaryCards"></div>
 
+            <!-- ================= CHARTS ================= -->
             <div class="grid">
                 <div class="card">
                     <div class="small">Injection Points by Status</div>
@@ -47,8 +48,9 @@
                 </div>
             </div>
 
+            <!-- ================= TABLE ================= -->
             <div class="card.full-width">
-                <div class="small">All Injection Points</div>
+                <div class="small">Injection Points</div>
 
                 <div class="decorators-wrapper">
                     <table id="ipTable">
@@ -70,7 +72,7 @@
 
         <script>
 
-            /* ----------------------- UTILITIES ----------------------- */
+            /* ================= UTILITIES ================= */
 
             function shorten(n) {
                 return n ? n.split(".").slice(-2).join(".") : "";
@@ -80,23 +82,36 @@
                 return {
                     RESOLVED: "#22c55e",
                     AMBIGUOUS: "#f59e0b",
-                    UNSATISFIED: "#ef4444"
+                    UNSATISFIED: "#ef4444",
+                    NOT_PROCESSED: "#9ca3af"
                 }[s] || "#9ca3af";
             }
 
-            /* ----------------------- DATA LOAD ----------------------- */
+            /* ================= ENDPOINT RESOLUTION ================= */
+
+            function resolveEndpoint() {
+                switch (document.getElementById("viewMode").value) {
+                    case "resolved":
+                        return "../resources/dev/injection-points/status/RESOLVED";
+                    case "ambiguous":
+                        return "../resources/dev/injection-points/ambiguous";
+                    case "unsatisfied":
+                        return "../resources/dev/injection-points/unsatisfied";
+                    case "not-processed":
+                        return "../resources/dev/injection-points/not-processed";
+                    case "problems":
+                        return "../resources/dev/injection-points/problems";
+                    default:
+                        return "../resources/dev/injection-points";
+                }
+            }
+
+            /* ================= DATA LOAD ================= */
 
             async function fetchAndRender() {
                 try {
-                    const problemsOnly = document.getElementById("problemsOnly").checked;
-
-                    const url = problemsOnly
-                            ? "../resources/dev/injection-points/problems"
-                            : "../resources/dev/injection-points";
-
-                    const res = await fetch(url);
+                    const res = await fetch(resolveEndpoint());
                     const data = await res.json();
-
                     window._ipRaw = data;
                     renderAll(data);
                 } catch (e) {
@@ -104,18 +119,14 @@
                 }
             }
 
-            /* ----------------------- RENDER PIPELINE ----------------------- */
+            /* ================= RENDER PIPELINE ================= */
 
             function renderAll(items) {
                 const q = document.getElementById("q").value.toLowerCase().trim();
-                const status = document.getElementById("statusFilter").value;
 
                 const filtered = items.filter(it => {
-                    if (status && it.status !== status)
-                        return false;
                     if (!q)
                         return true;
-
                     return (it.declaringBean || "").toLowerCase().includes(q)
                             || (it.member || "").toLowerCase().includes(q)
                             || (it.requiredType || "").toLowerCase().includes(q);
@@ -127,41 +138,42 @@
                 renderTable(filtered);
             }
 
-            /* ----------------------- SUMMARY ----------------------- */
+            /* ================= SUMMARY CARDS ================= */
 
             function renderSummary(items) {
-                const total = items.length;
-                const resolved = items.filter(i => i.status === "RESOLVED").length;
-                const problems = items.filter(i => i.status !== "RESOLVED").length;
+                const counts = {
+                    RESOLVED: 0,
+                    AMBIGUOUS: 0,
+                    UNSATISFIED: 0,
+                    NOT_PROCESSED: 0
+                };
+
+                items.forEach(i => counts[i.status]++);
 
                 const cards = [
-                    {label: "Injection Points", value: total},
-                    {label: "Resolved", value: resolved},
-                    {label: "Problems", value: problems}
-                ];
-
-                const colors = [
-                    'linear-gradient(135deg,#6366f1,#3b82f6)',
-                    'linear-gradient(135deg,#22c55e,#16a34a)',
-                    'linear-gradient(135deg,#ef4444,#dc2626)'
+                    {label: "Total", value: items.length, bg: "#6366f1"},
+                    {label: "Resolved", value: counts.RESOLVED, bg: "#22c55e"},
+                    {label: "Ambiguous", value: counts.AMBIGUOUS, bg: "#f59e0b"},
+                    {label: "Unsatisfied", value: counts.UNSATISFIED, bg: "#ef4444"},
+                    {label: "Not Processed", value: counts.NOT_PROCESSED, bg: "#9ca3af"}
                 ];
 
                 const c = document.getElementById("summaryCards");
                 c.innerHTML = "";
 
-                cards.forEach((card, i) => {
+                cards.forEach(card => {
                     const d = document.createElement("div");
                     d.className = "stat";
-                    d.style.background = colors[i];
+                    d.style.background = card.bg;
                     d.innerHTML = `<div class="label">${card.label}</div><div class="value">${card.value}</div>`;
                     c.appendChild(d);
                 });
             }
 
-            /* ----------------------- CHARTS ----------------------- */
+            /* ================= CHARTS ================= */
 
             function renderStatusPie(items) {
-                const counts = {RESOLVED: 0, AMBIGUOUS: 0, UNSATISFIED: 0};
+                const counts = {RESOLVED: 0, AMBIGUOUS: 0, UNSATISFIED: 0, NOT_PROCESSED: 0};
                 items.forEach(i => counts[i.status]++);
 
                 const ctx = document.getElementById("statusPie").getContext("2d");
@@ -187,10 +199,7 @@
                     map[i.declaringBean] = (map[i.declaringBean] || 0) + 1;
                 });
 
-                const sorted = Object.entries(map)
-                        .sort((a, b) => b[1] - a[1])
-                        .slice(0, 10);
-
+                const sorted = Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 10);
                 const labels = sorted.map(x => shorten(x[0]));
                 const data = sorted.map(x => x[1]);
 
@@ -201,15 +210,11 @@
                 window._problemBar = new Chart(ctx, {
                     type: "bar",
                     data: {labels, datasets: [{label: "Problematic IPs", data}]},
-                    options: {
-                        responsive: true,
-                        plugins: {legend: {display: false}},
-                        scales: {y: {beginAtZero: true}}
-                    }
+                    options: {responsive: true, plugins: {legend: {display: false}}, scales: {y: {beginAtZero: true}}}
                 });
             }
 
-            /* ----------------------- TABLE ----------------------- */
+            /* ================= TABLE ================= */
 
             function renderTable(items) {
                 const tb = document.querySelector("#ipTable tbody");
@@ -227,25 +232,13 @@
                     <td>${it.member}</td>
                     <td>${shorten(it.requiredType)}</td>
                     <td>${(it.qualifiers || []).join("<br>")}</td>
-                    <td>
-                        <span style="color:${statusColor(it.status)};font-weight:600">
-                            ${it.status}
-                        </span>
-                    </td>
+                    <td><span style="color:${statusColor(it.status)};font-weight:600">${it.status}</span></td>
                     <td>${details || ""}</td>
                 `;
 
                     tr.style.cursor = "pointer";
                     tr.addEventListener("click", () => {
-                        const p = new URLSearchParams({
-                            declaringBean: it.declaringBean,
-                            member: it.member,
-                            requiredType: it.requiredType,
-                            qualifiers: (it.qualifiers || []).join(","),
-                            status: it.status,
-                            candidateBeans: (it.candidateBeans || []).join(","),
-                            failureReason: it.failureReason || ""
-                        });
+                        const p = new URLSearchParams(it);
                         window.location.href = "injection-point-details.html?" + p.toString();
                     });
 
@@ -253,30 +246,13 @@
                 });
             }
 
-            /* ----------------------- EVENTS ----------------------- */
+            /* ================= EVENTS ================= */
 
-            document.getElementById("q")
-                    .addEventListener("input", () => renderAll(window._ipRaw || []));
+            document.getElementById("q").addEventListener("input", () => renderAll(window._ipRaw || []));
+            document.getElementById("viewMode").addEventListener("change", fetchAndRender);
+            document.getElementById("refresh").addEventListener("click", fetchAndRender);
 
-            document.getElementById("statusFilter")
-                    .addEventListener("change", () => renderAll(window._ipRaw || []));
-
-            document.getElementById("refresh")
-                    .addEventListener("click", fetchAndRender);
-
-            document.getElementById("problemsOnly")
-                    .addEventListener("change", e => {
-                        const sf = document.getElementById("statusFilter");
-                        if (e.target.checked) {
-                            sf.value = "";
-                            sf.querySelector('option[value="RESOLVED"]').disabled = true;
-                        } else {
-                            sf.querySelector('option[value="RESOLVED"]').disabled = false;
-                        }
-                        fetchAndRender();
-                    });
-
-            /* ----------------------- INIT ----------------------- */
+            /* ================= INIT ================= */
 
             fetchAndRender();
 

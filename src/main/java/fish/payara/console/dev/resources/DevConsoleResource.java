@@ -805,4 +805,38 @@ public class DevConsoleResource {
                 .toList();
     }
 
+    @GET
+    @Path("/injection-points/unsatisfied")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<InjectionPointDTO> getUnsatisfiedInjectionPoints() {
+        guard();
+        return getByStatus(ResolutionStatus.UNSATISFIED);
+    }
+
+    @GET
+    @Path("/injection-points/ambiguous")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<InjectionPointDTO> getAmbiguousInjectionPoints() {
+        guard();
+        return getByStatus(ResolutionStatus.AMBIGUOUS);
+    }
+
+    @GET
+    @Path("/injection-points/not-processed")
+    @Produces(MediaType.APPLICATION_JSON)
+    public List<InjectionPointDTO> getNotProcessedInjectionPoints() {
+        guard();
+        return getByStatus(ResolutionStatus.NOT_PROCESSED);
+    }
+
+    private List<InjectionPointDTO> getByStatus(ResolutionStatus status) {
+        return registry.getAllInjectionPoints()
+                .values()
+                .stream()
+                .flatMap(List::stream)
+                .filter(ip -> ip.getResolutionStatus() == status)
+                .map(InjectionPointDTO::new)
+                .toList();
+    }
+
 }
