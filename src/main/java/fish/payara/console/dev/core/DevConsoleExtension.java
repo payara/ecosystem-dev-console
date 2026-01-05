@@ -83,12 +83,13 @@ public class DevConsoleExtension implements Extension {
 
             @Override
             public X produce(CreationalContext<X> ctx) {
-                info.incrementCount();
+                info.incrementProducedCount();
                 return delegate.produce(ctx);
             }
 
             @Override
             public void dispose(X instance) {
+                info.incrementDisposedCount();
                 delegate.dispose(instance);
             }
 

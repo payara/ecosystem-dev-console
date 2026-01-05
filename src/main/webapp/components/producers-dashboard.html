@@ -27,8 +27,8 @@
 
             <div class="grid">
                 <div class="card">
-                    <div class="small">Top Produced — By Count</div>
-                    <canvas id="producedChart" height="220"></canvas>
+                    <div class="small">Produced vs Disposed</div>
+                    <canvas id="lifecycleChart" height="220"></canvas>
                 </div>
 
                 <div class="card">
@@ -47,8 +47,10 @@
                                 <th>Kind</th>
                                 <th>Member</th>
                                 <th>Produced Type</th>
-                                <th>Count</th>
+                                <th>Produced</th>
                                 <th>Last Produced</th>
+                                <th>Disposed</th>
+                                <th>Last Disposed</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -58,13 +60,11 @@
         </div>
 
         <script>
-
             function shorten(n) {
                 return n.split(".").slice(-2).join(".");
             }
 
             async function fetchAndRender() {
-                debugger;
                 try {
                     const res = await fetch("../resources/dev/producers");
                     const data = await res.json();
@@ -91,7 +91,7 @@
                 });
 
                 renderSummary(items);
-                renderProducedChart(filtered);
+                renderLifecycleChart(filtered);
                 renderTypesChart(filtered);
                 renderTable(filtered);
             }
@@ -99,15 +99,18 @@
             function renderSummary(items) {
                 const total = items.length;
                 const totalProduced = items.reduce((s, i) => s + (i.producedCount || 0), 0);
+                const totalDisposed = items.reduce((s, i) => s + (i.disposedCount || 0), 0);
 
                 const cards = [
                     {label: "Producers", value: total},
-                    {label: "Total Produced", value: totalProduced}
+                    {label: "Total Produced", value: totalProduced},
+                    {label: "Total Disposed", value: totalDisposed}
                 ];
 
                 const colors = [
                     'linear-gradient(135deg,#6366f1,#3b82f6)',
-                    'linear-gradient(135deg,#06b6d4,#0ea5e9)'
+                    'linear-gradient(135deg,#06b6d4,#0ea5e9)',
+                    'linear-gradient(135deg,#f97316,#fb923c)'
                 ];
 
                 const c = document.getElementById("summaryCards");
@@ -122,18 +125,32 @@
                 });
             }
 
-            function renderProducedChart(items) {
-                const sorted = items.slice().sort((a, b) => (b.producedCount || 0) - (a.producedCount || 0)).slice(0, 10);
-                const labels = sorted.map(x => shorten(x.className));
-                const data = sorted.map(x => x.producedCount || 0);
+            function renderLifecycleChart(items) {
+                const sorted = items.slice()
+                        .sort((a, b) => (b.producedCount || 0) - (a.producedCount || 0))
+                        .slice(0, 10);
 
-                const ctx = document.getElementById("producedChart").getContext("2d");
-                if (window._prodChart)
-                    window._prodChart.destroy();
-                window._prodChart = new Chart(ctx, {
+                const labels = sorted.map(x => shorten(x.className));
+                const produced = sorted.map(x => x.producedCount || 0);
+                const disposed = sorted.map(x => x.disposedCount || 0);
+
+                const ctx = document.getElementById("lifecycleChart").getContext("2d");
+                if (window._lifeChart)
+                    window._lifeChart.destroy();
+
+                window._lifeChart = new Chart(ctx, {
                     type: "bar",
-                    data: {labels, datasets: [{label: "Produced", data}]},
-                    options: {responsive: true, plugins: {legend: {display: false}}, scales: {y: {beginAtZero: true}}}
+                    data: {
+                        labels,
+                        datasets: [
+                            {label: "Produced", data: produced},
+                            {label: "Disposed", data: disposed}
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {y: {beginAtZero: true}}
+                    }
                 });
             }
 
@@ -149,6 +166,7 @@
                 const ctx = document.getElementById("typesChart").getContext("2d");
                 if (window._typesChart)
                     window._typesChart.destroy();
+
                 window._typesChart = new Chart(ctx, {
                     type: "bar",
                     data: {labels, datasets: [{label: "Occurrences", data}]},
@@ -167,8 +185,10 @@
                     <td>${it.kind}</td>
                     <td>${it.memberSignature}</td>
                     <td>${it.producedType}</td>
-                    <td>${it.producedCount}</td>
+                    <td>${it.producedCount || 0}</td>
                     <td>${it.lastProduced || ""}</td>
+                    <td>${it.disposedCount || 0}</td>
+                    <td>${it.lastDisposed || ""}</td>
                 `;
 
                     tr.style.cursor = "pointer";
