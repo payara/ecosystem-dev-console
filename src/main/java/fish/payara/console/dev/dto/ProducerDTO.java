@@ -55,14 +55,20 @@ public class ProducerDTO {
     private final int producedCount; // how many beans of that type currently exist
     private final Instant lastProduced;
 
+    private final int disposedCount;    // number of times the disposer was invoked
+    private final Instant lastDisposed;
 
     public ProducerDTO(ProducerInfo info) {
         this.className = info.getClassName();
         this.memberSignature = info.getMemberSignature();
         this.producedType = info.getProducedType();
         this.kind = info.getKind().name();
-        this.producedCount = info.getproducedCount();
+
+        this.producedCount = info.getProducedCount();
         this.lastProduced = info.getLastProduced();
+
+        this.disposedCount = info.getDisposedCount();
+        this.lastDisposed = info.getLastDisposed();
     }
 
     // getters
@@ -70,6 +76,10 @@ public class ProducerDTO {
     public String getMemberSignature() { return memberSignature; }
     public String getProducedType() { return producedType; }
     public String getKind() { return kind; }
-    public int getproducedCount() { return producedCount; }
+
+    public int getProducedCount() { return producedCount; }
     public Instant getLastProduced() { return lastProduced; }
+
+    public int getDisposedCount() { return disposedCount; }
+    public Instant getLastDisposed() { return lastDisposed; }
 }

@@ -56,8 +56,11 @@ public class ProducerInfo extends BeanInfo {
     private final String memberSignature;   // field or method signature without class name
     private final String producedType;      // type as String
     private final Kind kind;                // FIELD or METHOD
-    private final AtomicInteger producedCount = new AtomicInteger(0); //  Counts how many times CDI executed this producer 
+    private final AtomicInteger producedCount = new AtomicInteger(0); // Counts how many times CDI executed this producer
     private final AtomicReference<Instant> lastProduced = new AtomicReference<>(null);
+
+    private final AtomicInteger disposedCount = new AtomicInteger(0); // Counts how many times CDI executed this disposer
+    private final AtomicReference<Instant> lastDisposed = new AtomicReference<>(null);
 
     public ProducerInfo(AnnotatedMember<?> member, Type producedType, Kind kind, BeanManager bm) {
         super(member.getJavaMember().getDeclaringClass().getName());
@@ -76,10 +79,10 @@ public class ProducerInfo extends BeanInfo {
     }
 
     /**
-     * Increment whenever the CDI extension's wrapped producer is invoked
-     * and record the last produced timestamp.
+     * Increment whenever the CDI extension's wrapped producer is invoked and
+     * record the last produced timestamp.
      */
-    public void incrementCount() {
+    public void incrementProducedCount() {
         producedCount.incrementAndGet();
         lastProduced.set(Instant.now());
     }
@@ -96,10 +99,34 @@ public class ProducerInfo extends BeanInfo {
      *
      * @return
      */
-    public int getproducedCount() {
+    public int getProducedCount() {
         return producedCount.get();
     }
 
+    /**
+     * Increment whenever the CDI disposer method is invoked and record the last
+     * disposed timestamp.
+     */
+    public void incrementDisposedCount() {
+        disposedCount.incrementAndGet();
+        lastDisposed.set(Instant.now());
+    }
+
+    /**
+     * Returns the timestamp when this producer last disposed an instance.
+     */
+    public Instant getLastDisposed() {
+        return lastDisposed.get();
+    }
+
+    /**
+     * Returns how many times this producer disposed an instance.
+     *
+     * @return
+     */
+    public int getDisposedCount() {
+        return disposedCount.get();
+    }
 
     static String simplifySignature(String signature) {
         int parenIndex = signature.indexOf("(");
@@ -165,12 +192,13 @@ public class ProducerInfo extends BeanInfo {
 
     @Override
     public String toString() {
-        return "ProducerInfo{" +
-                "className='" + className + '\'' +
-                ", memberSignature='" + memberSignature + '\'' +
-                ", producedType='" + producedType + '\'' +
-                ", kind=" + kind +
-                ", producedCount=" + producedCount +
-                '}';
+        return "ProducerInfo{"
+                + "className='" + className + '\''
+                + ", memberSignature='" + memberSignature + '\''
+                + ", producedType='" + producedType + '\''
+                + ", kind=" + kind
+                + ", producedCount=" + producedCount
+                + ", disposedCount=" + disposedCount
+                + '}';
     }
 }
