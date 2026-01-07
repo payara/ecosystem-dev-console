@@ -1,36 +1,97 @@
-# Dev Console - CDI Dev Mode
+# Dev Console – CDI Dev Mode
 
-This project is focused on providing tools and extension capabilities for Contexts and Dependency Injection (CDI) in development mode. It features probing, registry management, observer patterns, and REST API integrations to facilitate enhanced development and debugging capabilities for Jakarta EE applications.
+This project provides a development-time console for inspecting and diagnosing
+Contexts and Dependency Injection (CDI) applications. It instruments CDI lifecycle
+events and exposes structured metadata through a set of JSON endpoints under
+a unified `/dev` application path.
 
-## Features
+The Dev Console is intended strictly for development and debugging purposes.
 
-- **Bean Probing and Registry:**  
-  The `ProbeExtension` class acts as a CDI extension to observe bean processing, observer method processing, injection target processing, and deployment lifecycle events. It uses `ProbeRegistry` to track beans, their injection dependencies (bean graph), security annotations, REST resources and methods, and observers in the application.
-  
-- **Bean Graph Model:**  
-  The `BeanGraphDTO`, along with `BeanNode` and `BeanNodeAdapter`, models and serializes a graph of bean dependencies to visualize injection relationships.
-  
-- **REST API Exposure (`ProbeResource`):**  
-  Provides endpoints to expose information like beans, observers, seen CDI types, bean dependency graph, REST resources, REST methods, and security annotations in JSON format for external tools or UI.
-  
-- **Security Annotations Audit:**  
-  Tracks security annotations such as `@RolesAllowed`, `@PermitAll`, and `@DenyAll` on annotated types and methods.
-  
-- **Observer Methods Tracking:**  
-  Captures observer methods registered in the application and exposes their metadata.
-  
-- **Wrapping Injection Target:**  
-  `WrappingInjectionTarget` wraps CDI injection targets for potential custom behavior or proxying when enabled.
-  
-- **DTOs for Data Transfer:**  
-  Includes DTOs such as `BeanDTO`, `SecurityAnnotationDTO`, `ObserverDTO`, `RestResourceDTO`, and `RestMethodDTO` to standardize data structures for REST responses.
+---
 
-- **Conditional Activation:**  
-  The functionality can be enabled or disabled based on the system property `payara.dev.console`.
+## Key Features
 
-## Conclusion
+- **Bean Probing & Registry**
+  - Tracks discovered CDI beans, scopes, qualifiers, stereotypes, and producers
+  - Captures lifecycle statistics (creation, destruction, invocation)
 
-Payara Dev Console is a comprehensive development utility for Jakarta EE applications. By instrumenting CDI lifecycle events and providing a REST API, it empowers developers with introspection and diagnostics tools for beans, observers, REST endpoints, and security annotations. This improves debugging, auditing, and understanding of complex CDI-based applications during development.
+- **Bean Dependency Graph**
+  - Builds a directed graph of injection relationships
+  - Detects circular dependencies
+  - Supports full graph and per-bean subgraph views
 
+- **Scoped Bean Analysis**
+  - Lists all scoped beans with lifecycle counters
+  - Provides per-scope summaries with active contextual instance counts
 
+- **Interceptors & Decorators**
+  - Lists registered interceptors and decorators
+  - Exposes invocation statistics and execution chains
+  - Supports class-level and method-level resolution
 
+- **Injection Point Diagnostics**
+  - Lists all injection points
+  - Highlights unresolved, ambiguous, and unprocessed injection points
+  - Supports per-bean injection point inspection
+
+- **Observers & Events**
+  - Tracks observer methods and their metadata
+  - Records recently fired CDI events and resolved observers
+
+- **REST Introspection**
+  - Lists REST resources and methods
+  - Tracks REST method invocation metrics
+  - Exposes registered exception mappers
+
+- **Security Audit**
+  - Captures security annotations such as `@RolesAllowed`, `@PermitAll`,
+    and `@DenyAll`
+  - Reports affected classes, methods, HTTP verbs, and paths
+
+- **Seen Types**
+  - Reports Java types and annotations observed by the CDI container
+
+- **Conditional Activation**
+  - Enabled only when the system property `payara.dev.console` is set
+
+---
+
+## Endpoint Overview
+
+All endpoints are rooted under `/dev`.
+
+### CDI
+- `/dev/cdi/beans/*`
+- `/dev/cdi/bean-graph/*`
+- `/dev/cdi/scoped-beans`
+- `/dev/cdi/scoped-beans/detail`
+- `/dev/cdi/injection-points/*`
+- `/dev/cdi/interceptors/*`
+- `/dev/cdi/intercepted-classes`
+- `/dev/cdi/decorators/*`
+- `/dev/cdi/decorated-classes`
+- `/dev/cdi/producers`
+- `/dev/cdi/observers`
+- `/dev/cdi/events`
+- `/dev/cdi/extensions`
+- `/dev/cdi/seen-types`
+
+### REST
+- `/dev/rest/resources`
+- `/dev/rest/methods/*`
+- `/dev/rest/exception-mappers`
+
+### Security
+- `/dev/security/audit`
+
+### Metadata
+- `/dev/metadata`
+
+---
+
+## Summary
+
+The CDI Dev Console provides deep visibility into CDI wiring, lifecycle behavior,
+REST exposure, and security configuration. By combining runtime instrumentation
+with structured JSON endpoints, it enables developers to better understand,
+debug, and validate complex Jakarta EE applications during development.

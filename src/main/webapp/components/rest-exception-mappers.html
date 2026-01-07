@@ -39,7 +39,7 @@
             // Fetch and render
             async function fetchAndRender() {
                 try {
-                    const res = await fetch("../resources/dev/rest-exception-mappers");
+                    const res = await fetch("../rest/exception-mappers");
                     const json = await res.json();
 
                     // Convert object { mapper: exception } → array of entries

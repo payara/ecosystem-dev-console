@@ -85,7 +85,7 @@
 
             async function fetchAndRender() {
                 try {
-                    const res = await fetch("../resources/dev/rest-methods");
+                    const res = await fetch("../rest/methods");
                     const data = await res.json();
                     window._restMethodsRaw = data;
                     renderAll(data);

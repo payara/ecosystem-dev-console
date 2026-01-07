@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2025 Payara Foundation and/or its affiliates. All rights reserved.
+ * Copyright (c) 2026 Payara Foundation and/or its affiliates. All rights reserved.
  *
  * The contents of this file are subject to the terms of either the GNU
  * General Public License Version 2 only ("GPL") or the Common Development
@@ -36,29 +36,38 @@
  * only if the new code is made subject to such option by the copyright
  * holder.
  */
-package fish.payara.console.dev.dto;
+package fish.payara.console.dev.resources;
 
-import fish.payara.console.dev.model.HTTPRecord;
-import java.util.ArrayList;
-import java.util.List;
+import org.jboss.arquillian.container.test.api.Deployment;
+import org.jboss.shrinkwrap.api.ShrinkWrap;
+import org.jboss.shrinkwrap.api.spec.WebArchive;
+import org.jboss.shrinkwrap.resolver.api.maven.Maven;
+import java.io.File;
 
-public class RestMethodFullDTO extends RestMethodDTO {
+public class ConsoleDeployment extends AbstractDevConsoleTest {
 
-    private List<HTTPRecord> records = new ArrayList<>();
+    @Deployment(testable = false)
+    public static WebArchive createDeployment() {
+        return ShrinkWrap.create(WebArchive.class)
+                .addClass(AbstractConsoleServlet.class)
+                .addPackages(true, "fish.payara.console.dev.cdi.demo")
+                .addPackages(true, "fish.payara.console.dev.core")
+                .addPackages(true, "fish.payara.console.dev.dto")
+                .addPackages(true, "fish.payara.console.dev.model")
+                .addPackages(true, "fish.payara.console.dev.resources")
+                .addPackages(true, "fish.payara.console.dev.rest")
+                .addPackages(true, "fish.payara.console.dev.test")
+                .addAsResource("META-INF/services/jakarta.enterprise.inject.spi.Extension")
+                .addAsWebInfResource(new File("src/main/webapp/WEB-INF/beans.xml"))
+                .addAsLibraries(
+    Maven.configureResolver()
+        .fromFile("src/test/resources/empty-settings.xml")
+        .loadPomFromFile("pom.xml")
+        .resolve("net.bytebuddy:byte-buddy")
+        .withTransitivity()
+        .asFile()
+)
+;
 
-    public RestMethodFullDTO(String methodSignature, String path, String httpMethodAndProduces) {
-        super(methodSignature, path, httpMethodAndProduces);
     }
-
-    public List<HTTPRecord> getRecords() {
-        return records;
-    }
-
-    public void setRecords(List<HTTPRecord> records) {
-        this.records = records;
-        if (records != null) {
-            setInvoked(records.size());
-        }
-    }
-
 }

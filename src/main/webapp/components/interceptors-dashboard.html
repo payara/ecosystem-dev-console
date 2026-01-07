@@ -103,7 +103,7 @@
 
             async function fetchAndRender() {
                 try {
-                    const res = await fetch("../resources/dev/interceptors");
+                    const res = await fetch("../cdi/interceptors");
                     const data = await res.json();
                     window._interceptorRaw = data;
                     renderAll(data);

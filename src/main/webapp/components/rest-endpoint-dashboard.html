@@ -65,7 +65,7 @@
 
             async function loadRestDetails() {
                 const key = getRestKeyFromURL();
-                const url = `../resources/dev/rest-methods/${encodeURIComponent(key)}`;
+                const url = `../rest/methods/${encodeURIComponent(key)}`;
                 const res = await fetch(url);
                 const data = await res.json();
 

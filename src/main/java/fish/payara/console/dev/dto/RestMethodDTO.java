@@ -38,11 +38,17 @@
  */
 package fish.payara.console.dev.dto;
 
+import fish.payara.console.dev.model.HTTPRecord;
+import java.util.ArrayList;
+import java.util.List;
+
 public class RestMethodDTO {
+
     private final String methodSignature;
     private final String path;
     private final String httpMethodAndProduces;
     private int invoked;
+    private List<HTTPRecord> records = new ArrayList<>();
 
     public RestMethodDTO(String methodSignature, String path, String httpMethodAndProduces) {
         this.methodSignature = methodSignature;
@@ -69,5 +75,15 @@ public class RestMethodDTO {
     public void setInvoked(int invoked) {
         this.invoked = invoked;
     }
-    
+
+    public List<HTTPRecord> getRecords() {
+        return records;
+    }
+
+    public void setRecords(List<HTTPRecord> records) {
+        this.records = records;
+        if (records != null) {
+            setInvoked(records.size());
+        }
+    }
 }
