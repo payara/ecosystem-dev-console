@@ -46,7 +46,7 @@
         <script>
             async function fetchData() {
                 try {
-                    const r = await fetch("../resources/dev/scoped-beans");
+                    const r = await fetch("../cdi/scoped-beans");
                     const data = await r.json();
                     window._beansRaw = data;
                     renderAll(data);

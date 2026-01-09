@@ -38,33 +38,109 @@
  */
 package fish.payara.console.dev.dto;
 
+import fish.payara.console.dev.model.InstanceStats;
+import fish.payara.console.dev.model.Record;
+import jakarta.enterprise.inject.spi.Bean;
+
+import java.lang.annotation.Annotation;
+import java.time.Instant;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 /**
- * Bean Data Transfer Object to represent beans in a structured way for API responses.
+ * Full representation of a bean including lifecycle statistics.
  */
 public class BeanDTO {
-    private String id;
-    private String beanType;
-    private String description;
-    private String scope;
+    private final String beanClass;
+    private final String scope;
+    private final Set<String> qualifiers;
+    private final Set<String> types;
+    private final String name;
+    private final Set<String> stereotypes;
+    private final boolean alternative;
+    private final String producedBy; // if created via @Produces
 
-    public BeanDTO(Object bean) {
-        this.description = bean.toString();
-        this.beanType = bean.getClass().getName();
+    private final int currentCount;
+    private final int createdCount;
+    private final Instant lastCreated;
+    private final int maxCount;
+    private final int destroyedCount;
+
+    private final List<Record> creationRecords;
+    private final List<Record> destructionRecords;
+
+    public BeanDTO(Bean<?> bean) {
+        this(bean, null, null);
     }
 
-    public String getBeanType() {
-        return beanType;
+    public BeanDTO(Bean<?> bean, InstanceStats stats, String producedBy) {
+        this.beanClass = bean.getBeanClass().getName();
+
+        Class<?> scopeAnnotation = bean.getScope();
+        this.scope = (scopeAnnotation != null) ? scopeAnnotation.getSimpleName() : "Unknown";
+
+        this.qualifiers = bean.getQualifiers().stream()
+                .map(BeanDTO::formatAnnotation)
+                .collect(Collectors.toSet());
+
+        this.types = bean.getTypes().stream()
+                .filter(t -> !t.equals(Object.class)
+                        && !t.getTypeName().equals(bean.getBeanClass().getName()))
+                .map(Object::toString)
+                .collect(Collectors.toSet());
+
+        this.name = bean.getName();
+
+        this.stereotypes = bean.getStereotypes().stream()
+                .map(Class::getSimpleName)
+                .collect(Collectors.toSet());
+
+        this.alternative = bean.isAlternative();
+        this.producedBy = producedBy;
+
+        if (stats != null) {
+            this.currentCount = stats.getCurrentCount().get();
+            this.createdCount = stats.getCreatedCount().get();
+            this.lastCreated = stats.getLastCreated().get();
+            this.maxCount = stats.getMaxCount().get();
+            this.destroyedCount = stats.getDestroyedCount().get();
+            this.creationRecords = List.copyOf(stats.getCreationRecords());
+            this.destructionRecords = List.copyOf(stats.getDestructionRecords());
+        } else {
+            this.currentCount = 0;
+            this.createdCount = 0;
+            this.lastCreated = null;
+            this.maxCount = 0;
+            this.destroyedCount = 0;
+            this.creationRecords = List.of();
+            this.destructionRecords = List.of();
+        }
     }
 
-    public void setBeanType(String beanType) {
-        this.beanType = beanType;
+    private static String formatAnnotation(Annotation a) {
+        if (a.annotationType().getDeclaredMethods().length == 0) {
+            return "@" + a.annotationType().getSimpleName();
+        }
+        return "@" + a.annotationType().getSimpleName() + a.toString();
     }
 
-    public String getDescription() {
-        return description;
-    }
+    // getters
+    public String getBeanClass() { return beanClass; }
+    public String getScope() { return scope; }
+    public Set<String> getQualifiers() { return qualifiers; }
+    public Set<String> getTypes() { return types; }
+    public String getName() { return name; }
+    public Set<String> getStereotypes() { return stereotypes; }
+    public boolean isAlternative() { return alternative; }
+    public String getProducedBy() { return producedBy; }
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
+    public int getCurrentCount() { return currentCount; }
+    public int getCreatedCount() { return createdCount; }
+    public Instant getLastCreated() { return lastCreated; }
+    public int getMaxCount() { return maxCount; }
+    public int getDestroyedCount() { return destroyedCount; }
+
+    public List<Record> getCreationRecords() { return creationRecords; }
+    public List<Record> getDestructionRecords() { return destructionRecords; }
 }

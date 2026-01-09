@@ -160,7 +160,7 @@
         </div>
 
         <script>
-            const base = '../resources/dev/beans/';
+            const base = '../cdi/beans/';
 
             function qs(param) {
                 const u = new URL(window.location.href);
@@ -361,7 +361,7 @@
             const bean = qs('bean') || (location.pathname.match(/beans\/(.*)$/) || [])[1];
 
             const beanName = decodeURIComponent(bean);
-            const endpoint = '../resources/dev/bean-graph/' + beanName;
+            const endpoint = '../cdi/bean-graph/' + beanName;
 
             fetch(endpoint, {headers: {'Accept': 'application/json'}})
                     .then(resp => resp.json())

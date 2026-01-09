@@ -92,17 +92,17 @@
             function resolveEndpoint() {
                 switch (document.getElementById("viewMode").value) {
                     case "resolved":
-                        return "../resources/dev/injection-points/status/RESOLVED";
+                        return "../cdi/injection-points/status/RESOLVED";
                     case "ambiguous":
-                        return "../resources/dev/injection-points/ambiguous";
+                        return "../cdi/injection-points/ambiguous";
                     case "unsatisfied":
-                        return "../resources/dev/injection-points/unsatisfied";
+                        return "../cdi/injection-points/unsatisfied";
                     case "not-processed":
-                        return "../resources/dev/injection-points/not-processed";
+                        return "../cdi/injection-points/not-processed";
                     case "problems":
-                        return "../resources/dev/injection-points/problems";
+                        return "../cdi/injection-points/problems";
                     default:
-                        return "../resources/dev/injection-points";
+                        return "../cdi/injection-points";
                 }
             }
 

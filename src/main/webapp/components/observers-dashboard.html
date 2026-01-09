@@ -63,7 +63,7 @@
 
             async function fetchAndRender() {
                 try {
-                    const res = await fetch("../resources/dev/observers");
+                    const res = await fetch("../cdi/observers");
                     const data = await res.json();
                     window._observersRaw = data;
                     renderAll(data);

@@ -46,7 +46,7 @@
 
             async function fetchData() {
                 try {
-                    const r = await fetch("../resources/dev/intercepted-classes");
+                    const r = await fetch("../cdi/intercepted-classes");
                     const data = await r.json();
                     window._interceptedRaw = data;
                     renderAll(data);

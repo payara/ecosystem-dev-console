@@ -64,7 +64,7 @@ function shorten(n){ return n.split(".").slice(-2).join("."); }
 
 async function fetchAndRender(){
     try {
-        const res = await fetch("../resources/dev/decorators");
+        const res = await fetch("../cdi/decorators");
         const data = await res.json();
         window._decoratorRaw = data;
         renderAll(data);

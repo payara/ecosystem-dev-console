@@ -36,7 +36,7 @@
 
             async function fetchAndRender() {
                 try {
-                    const res = await fetch("../resources/dev/extension");
+                    const res = await fetch("../cdi/extension");
                     const data = await res.json();
                     window._extRaw = data;
                     renderAll(data);

@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadSidePaneCounts() {
     try {
-        const res = await fetch("resources/dev/metadata");
+        const res = await fetch("metadata");
       
         if (!res.ok) return;
         const meta = await res.json();

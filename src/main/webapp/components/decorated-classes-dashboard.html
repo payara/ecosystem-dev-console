@@ -46,7 +46,7 @@
 
             async function fetchData() {
                 try {
-                    const r = await fetch("../resources/dev/decorated-classes");
+                    const r = await fetch("../cdi/decorated-classes");
                     const data = await r.json();
                     window._decoratedRaw = data;
                     renderAll(data);
