@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <link rel="stylesheet" type="text/css" href="../css/common-dashboard.css">
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Bean Detail — CDI Dev Mode</title>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-funnel@4"></script>
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    </head>
+    <body>
+        <div class="wrap">
+            <div class="top">
+                <div>
+                    <h1 id="beanTitle">Bean: —</h1>
+                    <div id="beanScope" class="muted small"></div>
+                    <div id="className" class="muted small" style="margin-top:4px"></div>
+                </div>
+                <div class="meta">
+                    <div class="muted small">Current</div>
+                    <div id="currentCount" class="big">—</div>
+                    <div style="margin-top:8px;display:flex;gap:8px;align-items:center;justify-content:flex-end">
+                        <div class="muted small">Max / Created / Destroyed</div>
+                    </div>
+                    <div id="summaryCounts" class="small">—</div>
+                </div>
+            </div>
+
+
+            <div class="container">
+                <div class="left">
+                    <svg id="svg"></svg>
+                </div>
+
+                <div class="right">
+                    <div class="controls d-flex flex-column gap-2">
+
+                        <button id="fit" 
+                                class="btn btn-outline-primary"
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="top"
+                                data-bs-title="Fit graph to screen">
+                            <i class="bi bi-arrows-fullscreen"></i> 
+                        </button>
+
+                        <button id="center" 
+                                class="btn btn-outline-secondary"
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="top"
+                                data-bs-title="Center selected bean">
+                            <i class="bi bi-crosshair"></i> 
+                        </button>
+
+                        <button id="download" 
+                                class="btn btn-outline-success"
+                                data-bs-toggle="tooltip"
+                                data-bs-placement="top"
+                                data-bs-title="Download graph as PNG image">
+                            <i class="bi bi-download"></i> 
+                        </button>
+                    </div>
+
+                    <div class="panel mt-4">
+                        <h3>Selected node</h3>
+                        <div id="info" class="small">Click a node to see details</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid">
+                <div class="card">
+                    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:8px">
+                        <strong>Lifecycle Funnel</strong>
+                        <div class="muted small">shows created → current → destroyed</div>
+                    </div>
+                    <canvas id="funnelChart" height="130"></canvas>
+                    <div style="display:flex;justify-content:space-between;margin-top:10px;gap:8px">
+                        <div class="statRow" style="flex:1">
+                            <div class="stat" id="pctActive">—</div>
+                            <div class="muted small" style="align-self:center">Active % of max</div>
+                        </div>
+                        <div style="flex:2">
+                            <div class="muted small">Active ratio</div>
+                            <div class="progressWrap" aria-hidden="true"><div id="activeBar" class="progressBar"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                        <strong>Creation timeline (by second)</strong>
+                        <div class="muted small">created vs destroyed per second</div>
+                    </div>
+                    <canvas id="creationTimeline" height="160"></canvas>
+                    <div style="display:flex;justify-content:flex-end;margin-top:8px;gap:8px">
+                        <div class="badge" id="lastCreated">Last: —</div>
+                        <div class="badge" id="firstCreated">First: —</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <strong style="display:block;margin-bottom:8px">Creation records</strong>
+                    <div class="muted small" id="recordsSummary">—</div>
+                    <div style="margin-top:8px;max-height:260px;overflow:auto">
+                        <table id="creationTable"><thead><tr><th>Timestamp</th><th>Duration ms</th></tr></thead><tbody></tbody></table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <strong style="display:block;margin-bottom:8px">Destruction records</strong>
+                    <div class="muted small" id="destructionSummary">—</div>
+                    <div style="margin-top:8px;max-height:260px;overflow:auto">
+                        <table id="destructionTable"><thead><tr><th>Timestamp</th><th>Duration ms</th></tr></thead><tbody></tbody></table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <strong style="display:block;margin-bottom:8px">Avgs & Details</strong>
+                    <div class="muted small" id="avgs">—</div>
+                    <canvas id="durationChart" height="80" style="margin-top:8px"></canvas>
+                </div>
+
+                <div class="card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                        <strong>Qualifiers</strong>
+                    </div>
+                    <div style="display:flex;gap:12px;align-items:flex-start">
+                        <div style="flex:1">
+                            <div class="chips" id="qualifiers"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                        <strong>Stereotypes</strong>
+                    </div>
+                    <div style="display:flex;gap:12px;align-items:flex-start">
+                        <div style="flex:1">
+                            <div class="chips" id="stereotypes"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <strong style="display:block;margin-bottom:8px">Types</strong>
+                    <div style="max-height:260px;overflow:auto">
+                        <table id="typesTable">
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <script>
+            const base = '../cdi/beans/';
+
+            function qs(param) {
+                const u = new URL(window.location.href);
+                return u.searchParams.get(param);
+            }
+
+            function isoToLocalString(iso) {
+                try {
+                    return new Date(iso).toLocaleString();
+                } catch (e) {
+                    return iso;
+                }
+            }
+
+            function renderChips(container, items) {
+                const el = document.getElementById(container);
+                el.innerHTML = '';
+                (items || []).forEach(i => {
+                    const d = document.createElement('div');
+                    d.className = 'chip';
+                    d.textContent = i;
+                    el.appendChild(d);
+                });
+            }
+
+            function populateRecords(tableId, records) {
+                const tbody = document.querySelector(`#${tableId} tbody`);
+                tbody.innerHTML = '';
+                (records || []).slice().reverse().forEach(r => {
+                    const tr = document.createElement('tr');
+                    const ts = document.createElement('td');
+                    ts.textContent = isoToLocalString(r.timestamp);
+                    const dur = document.createElement('td');
+                    dur.textContent = (r.durationMs != null ? r.durationMs : '');
+                    tr.appendChild(ts);
+                    tr.appendChild(dur);
+                    tbody.appendChild(tr);
+                });
+            }
+
+            function makeCountsFromRecords(records) {
+                // counts keyed by second string yyyy-mm-ddThh:mm:ss
+                const counts = {};
+                (records || []).forEach(r => {
+                    if (!r || !r.timestamp)
+                        return;
+                    const s = new Date(r.timestamp).toISOString().slice(0, 19); // second precision
+                    counts[s] = (counts[s] || 0) + 1;
+                });
+                return counts;
+            }
+            function populateTypes(tableId, types) {
+                const tbody = document.querySelector(`#${tableId} tbody`);
+                tbody.innerHTML = '';
+                (types || []).forEach(t => {
+                    const tr = document.createElement('tr');
+                    const td = document.createElement('td');
+                    td.textContent = t;
+                    tr.appendChild(td);
+                    tbody.appendChild(tr);
+                });
+            }
+
+            async function loadBean(beanName) {
+                const encoded = encodeURIComponent(beanName);
+                const url = base + encoded;
+                const resp = await fetch(url);
+                if (!resp.ok)
+                    throw new Error(`HTTP ${resp.status}`);
+                return resp.json();
+            }
+
+            // Charts
+            let funnelChart, creationTimelineChart, durationChart;
+
+            function renderFunnel(created, current, destroyed) {
+                const ctx = document.getElementById('funnelChart').getContext('2d');
+                if (funnelChart)
+                    funnelChart.destroy();
+                funnelChart = new Chart(ctx, {
+                    type: 'funnel',
+                    data: {labels: ['Created', 'Current', 'Destroyed'], datasets: [{data: [created, current, destroyed], backgroundColor: ['rgba(34,197,94,0.9)', 'rgba(59,130,246,0.9)', 'rgba(234,88,12,0.9)']}]},
+                    options: {responsive: true, sort: 'none', funnel: {dynamicHeight: true}}
+                });
+            }
+
+            function renderCreationTimeline(createdRecords, destroyedRecords) {
+                const createdCounts = makeCountsFromRecords(createdRecords);
+                const destroyedCounts = makeCountsFromRecords(destroyedRecords);
+                // Build last 120 seconds window (or based on data range)
+                const allSecs = new Set([...Object.keys(createdCounts), ...Object.keys(destroyedCounts)]);
+                const secs = Array.from(allSecs).sort();
+                if (secs.length === 0) {
+                    // fallback: last 60 seconds
+                    const now = Date.now();
+                    for (let i = 59; i >= 0; i--) {
+                        const d = new Date(now - i * 1000).toISOString().slice(0, 19);
+                        secs.push(d);
+                    }
+                }
+                const labels = secs.map(s => s.replace('T', ' '));
+                const createdData = secs.map(s => createdCounts[s] || 0);
+                const destroyedData = secs.map(s => destroyedCounts[s] || 0);
+
+                const ctx = document.getElementById('creationTimeline').getContext('2d');
+                if (creationTimelineChart)
+                    creationTimelineChart.destroy();
+                creationTimelineChart = new Chart(ctx, {
+                    type: 'line', data: {labels, datasets: [{label: 'Created/s', data: createdData, fill: true, tension: 0.2, pointRadius: 2, backgroundColor: 'rgba(34,197,94,0.12)', borderColor: 'rgba(34,197,94,0.9)'}, {label: 'Destroyed/s', data: destroyedData, fill: true, tension: 0.2, pointRadius: 2, backgroundColor: 'rgba(234,88,12,0.12)', borderColor: 'rgba(234,88,12,0.9)'}]},
+                    options: {responsive: true, plugins: {tooltip: {mode: 'index', intersect: false}}, scales: {y: {beginAtZero: true}}}
+                });
+            }
+
+            function renderDurationSpark(records) {
+                const ctx = document.getElementById('durationChart').getContext('2d');
+                const sorted = (records || []).slice().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                const labels = sorted.map(r => (new Date(r.timestamp)).toLocaleTimeString());
+                const data = sorted.map(r => r.durationMs != null ? r.durationMs : 0);
+                if (durationChart)
+                    durationChart.destroy();
+                durationChart = new Chart(ctx, {
+                    type: 'bar', data: {labels, datasets: [{label: 'Creation duration ms', data, backgroundColor: 'rgba(59,130,246,0.6)'}]},
+                    options: {responsive: true, plugins: {legend: {display: false}}, scales: {x: {display: false}, y: {beginAtZero: true}}}
+                });
+            }
+
+            function summarize(records) {
+                const avg = (records && records.length) ? (records.reduce((s, r) => s + (r.durationMs || 0), 0) / records.length).toFixed(2) : '—';
+                const max = (records && records.length) ? Math.max(...records.map(r => r.durationMs || 0)) : '—';
+                return {text: `count=${records ? records.length : 0}  avgDurationMs=${avg}  maxMs=${max}`, avg: avg, max: max};
+            }
+
+            (async function main() {
+                try {
+                    const bean = qs('bean') || (location.pathname.match(/beans\/(.*)$/) || [])[1];
+                    if (!bean) {
+                        document.getElementById('beanTitle').textContent = 'No bean specified';
+                        return;
+                    }
+
+                    // decode if present in path
+                    const beanName = decodeURIComponent(bean);
+                    document.getElementById('beanTitle').textContent = beanName;
+
+                    const data = await loadBean(beanName);
+
+                    document.getElementById('beanScope').textContent = (data.scope ? data.scope : 'Unknown scope');
+                    document.getElementById('className').textContent = (data.className ? data.className : '');
+                    document.getElementById('currentCount').textContent = data.currentCount != null ? data.currentCount : '—';
+                    document.getElementById('summaryCounts').textContent = `max=${data.maxCount || 0}  created=${data.createdCount || 0}  destroyed=${data.destroyedCount || 0}`;
+
+                    renderChips('qualifiers', data.qualifiers || []);
+                    renderChips('stereotypes', (data.stereotypes && data.stereotypes.length) ? data.stereotypes : ['(none)']);
+                    populateTypes('typesTable', data.types || []);
+
+                    populateRecords('creationTable', data.creationRecords || []);
+                    populateRecords('destructionTable', data.destructionRecords || []);
+
+                    const creationSummary = summarize(data.creationRecords || []);
+                    const destructionSummary = summarize(data.destructionRecords || []);
+                    document.getElementById('recordsSummary').textContent = creationSummary.text;
+                    document.getElementById('destructionSummary').textContent = destructionSummary.text;
+
+                    renderFunnel(data.createdCount || 0, data.currentCount || 0, data.destroyedCount || 0);
+                    renderCreationTimeline(data.creationRecords || [], data.destructionRecords || []);
+                    renderDurationSpark(data.creationRecords || []);
+
+                    // percentages / progress
+                    const max = (data.maxCount && data.maxCount > 0) ? data.maxCount : Math.max(data.currentCount || 0, data.createdCount || 0, 1);
+                    const pct = Math.round(((data.currentCount || 0) / max) * 100);
+                    document.getElementById('pctActive').textContent = (isFinite(pct) ? pct + '%' : '—');
+                    document.getElementById('activeBar').style.width = (isFinite(pct) ? pct + '%' : '0%');
+
+                    // averages / raw json
+                    const avgCreationMs = creationSummary.avg !== undefined ? creationSummary.avg : '—';
+                    document.getElementById('avgs').textContent = `creation avg ms: ${avgCreationMs}  |  entries: ${data.creationRecords ? data.creationRecords.length : 0}  |  creation max ms: ${creationSummary.max}`;
+
+                    // last/first created badges
+                    if (data.creationRecords && data.creationRecords.length) {
+                        const sorted = data.creationRecords.slice().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+                        document.getElementById('firstCreated').textContent = 'First: ' + isoToLocalString(sorted[0].timestamp);
+                        document.getElementById('lastCreated').textContent = 'Last: ' + isoToLocalString(sorted[sorted.length - 1].timestamp);
+                    } else {
+                        document.getElementById('firstCreated').textContent = 'First: —';
+                        document.getElementById('lastCreated').textContent = 'Last: —';
+                    }
+
+                } catch (e) {
+                    console.error(e);
+                    document.getElementById('beanTitle').textContent = 'Failed to load bean — see console';
+                }
+            })();
+        </script>
+
+
+        <script>
+
+            const bean = qs('bean') || (location.pathname.match(/beans\/(.*)$/) || [])[1];
+
+            const beanName = decodeURIComponent(bean);
+            const endpoint = '../cdi/bean-graph/' + beanName;
+
+            fetch(endpoint, {headers: {'Accept': 'application/json'}})
+                    .then(resp => resp.json())
+                    .then(fullGraph => {
+
+                        const rootId = endpoint.split('/').pop();
+
+                        if (!fullGraph.nodes[rootId]) {
+                            throw new Error("Root bean not found in graph: " + rootId);
+                        }
+
+                        // ----------------------------
+                        // FULL NESTED DEP GRAPH BUILD
+                        // ----------------------------
+                        const allNodes = {};
+                        const allLinks = [];
+                        const visited = new Set();
+
+                        function walk(beanId) {
+                            if (visited.has(beanId))
+                                return;
+                            visited.add(beanId);
+
+                            const bean = fullGraph.nodes[beanId];
+                            if (!bean)
+                                return;
+
+                            allNodes[beanId] = {
+                                id: bean.beanId,
+                                description: bean.description,
+                                type: beanId === rootId ? "bean" : "dep",
+                                circular: bean.circular === true
+                            };
+
+                            for (const dep of bean.dependencies || []) {
+                                const depId = typeof dep === "string" ? dep : dep.beanId;
+                                if (typeof dep === "object") {
+                                    allNodes[depId] = allNodes[depId] || {
+                                        id: depId,
+                                        description: dep.description,
+                                        type: "dep",
+                                        circular: dep.circular === true
+                                    };
+                                }
+
+                                allLinks.push({source: beanId, target: depId});
+
+                                walk(depId);
+                            }
+                        }
+
+                        walk(rootId);
+
+                        const beanData = {
+                            nodes: Object.values(allNodes),
+                            links: allLinks
+                        };
+
+                        render(beanData);
+
+                    })
+                    .catch(err => {
+                    });
+
+
+            // =====================================================
+            // ================== RENDER GRAPH ======================
+            // =====================================================
+            function render(graph) {
+
+                const ICON_SPACE = 18; // px reserved for ⚠
+                let nodes = graph.nodes;
+                let links = graph.links;
+
+                const width = document.querySelector('.left').clientWidth;
+                const height = document.querySelector('.left').clientHeight;
+
+                const zoom = d3.zoom().on('zoom', (event) => svgGroup.attr('transform', event.transform));
+                const svg = d3.select('#svg')
+                        .attr('viewBox', `0 0 ${width} ${height}`)
+                        .call(zoom);
+
+                const svgGroup = svg.append('g');
+
+                const simulation = d3.forceSimulation(nodes)
+                        .force("link", d3.forceLink(links).id(d => d.id).distance(140).strength(1))
+                        .force("charge", d3.forceManyBody().strength(-700))
+                        .force("center", d3.forceCenter(width / 2, height / 2))
+                        .force("collision", d3.forceCollide().radius(d =>
+                            Math.max(d.w || 80, d.h || 24) / 2 + 10
+                        ));
+
+                const link = svgGroup.append("g")
+                        .attr("stroke-width", 1.5)
+                        .selectAll("line")
+                        .data(links)
+                        .join("line")
+                        .attr("class", "link");
+
+                const node = svgGroup.append("g")
+                        .selectAll("g")
+                        .data(nodes)
+                        .join("g")
+                        .attr("class", "node")
+                        .call(drag(simulation));
+
+                node.append("rect")
+                        .attr("rx", d => d.type === 'bean' ? 10 : 8)
+                        .attr("ry", d => d.type === 'bean' ? 10 : 8)
+                        .attr("fill", d => d.circular ? "#fee2e2" : null)
+                        .attr("stroke", d => d.circular ? "#dc2626" : "#333")
+                        .attr("stroke-width", d => d.circular ? 2.5 : 1)
+                        .attr("class", d => d.type === 'bean' ? 'bean' : 'dep')
+                        .attr("x", 0).attr("y", 0)
+                        .attr("width", 0).attr("height", 0);
+
+                node.append("text")
+                        .attr("text-anchor", "middle")
+                        .attr("dominant-baseline", "middle")
+                        .text(d => shortLabel(d.id));
+
+
+                // measure
+                node.each(function (d) {
+                    const g = d3.select(this);
+                    const bbox = g.select("text").node().getBBox();
+                    const pad = d.type === "bean" ? 12 : 8;
+                    const w = bbox.width + pad * 2 + (d.circular ? ICON_SPACE : 0);
+                    const h = bbox.height + pad * 2;
+                    d.w = w;
+                    d.h = h;
+                    g.select("rect")
+                            .attr("width", w).attr("height", h)
+                            .attr("x", -w / 2).attr("y", -h / 2);
+                });
+
+                node.append("text")
+                        .attr("class", "circular-icon")
+                        .attr("text-anchor", "start")
+                        .attr("dominant-baseline", "hanging")
+                        .attr("x", d => d.w / 2 - ICON_SPACE + 2)
+                        .attr("y", d => -d.h / 2 + 6)
+                        .text(d => d.circular ? "⚠" : "");
+
+                node.on("click", (event, d) => selectNode(d));
+
+                simulation.on("tick", () => {
+                    link
+                            .attr("x1", d => d.source.x)
+                            .attr("y1", d => d.source.y)
+                            .attr("x2", d => d.target.x)
+                            .attr("y2", d => d.target.y);
+
+                    node.attr("transform", d => `translate(${d.x},${d.y})`);
+                });
+
+                // =============== UTILITIES ===================
+
+                function shortLabel(id) {
+                    if (id.length > 32) {
+                        const p = id.split(".");
+                        return p.slice(-2).join(".");
+                    }
+                    return id;
+                }
+
+                function selectNode(d) {
+                    d3.selectAll("rect").attr("stroke", "#333").attr("stroke-width", 1);
+                    d3.selectAll("rect").filter(n => n.id === d.id)
+                            .attr("stroke", "#ff3b30").attr("stroke-width", 3);
+
+                    document.getElementById("info").innerText =
+                            `${d.id}\n\n${d.description || (d.type === 'dep' ? 'Dependency' : '')}`;
+                }
+
+                function drag(sim) {
+                    return d3.drag()
+                            .on("start", (event, d) => {
+                                if (!event.active)
+                                    sim.alphaTarget(0.3).restart();
+                                d.fx = d.x;
+                                d.fy = d.y;
+                            })
+                            .on("drag", (event, d) => {
+                                d.fx = event.x;
+                                d.fy = event.y;
+                            })
+                            .on("end", (event, d) => {
+                                if (!event.active)
+                                    sim.alphaTarget(0);
+                            });
+                }
+
+                function fit() {
+                    const b = svgGroup.node().getBBox();
+                    if (!b.width || !b.height)
+                        return;
+
+                    const scale = Math.min(width / b.width, height / b.height) * 0.85;
+                    const t = [
+                        width / 2 - (b.x + b.width / 2) * scale,
+                        height / 2 - (b.y + b.height / 2) * scale
+                    ];
+
+                    svg.transition().duration(600).call(
+                            zoom.transform,
+                            d3.zoomIdentity.translate(t[0], t[1]).scale(scale)
+                            );
+                }
+
+                function centerBean() {
+                    const b = nodes.find(n => n.type === "bean");
+                    if (!b)
+                        return;
+                    svg.transition().duration(600).call(
+                            zoom.transform,
+                            d3.zoomIdentity.translate(width / 2 - b.x, height / 2 - b.y).scale(1)
+                            );
+                }
+
+                function downloadPNG() {
+                    const serializer = new XMLSerializer();
+                    const clone = svg.node().cloneNode(true);
+                    const str = serializer.serializeToString(clone);
+                    const canvas = document.createElement("canvas");
+                    canvas.width = width * 2;
+                    canvas.height = height * 2;
+                    const ctx = canvas.getContext("2d");
+                    const img = new Image();
+                    img.src = "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(str)));
+                    img.onload = () => {
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        const a = document.createElement("a");
+                        a.href = canvas.toDataURL("image/png");
+                        a.download = "bean-graph.png";
+                        a.click();
+                    };
+                }
+
+                document.getElementById("fit").onclick = fit;
+                document.getElementById("center").onclick = centerBean;
+                document.getElementById("download").onclick = downloadPNG;
+
+                setTimeout(fit, 900);
+            }
+
+            document.addEventListener("DOMContentLoaded", () => {
+                [...document.querySelectorAll('[data-bs-toggle="tooltip"]')]
+                        .map(el => new bootstrap.Tooltip(el));
+            });
+        </script>
+
+    </body>
+</html>
